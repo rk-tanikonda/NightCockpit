@@ -7,7 +7,7 @@
 	<key>CFBundleExecutable</key>
 	<string>NightCockpit</string>
 	<key>CFBundleIdentifier</key>
-	<string>local.ramakrishna.nightcockpit</string>
+	<string>org.nightcockpit.app</string>
 	<key>CFBundleName</key>
 	<string>Night Cockpit</string>
 	<key>CFBundlePackageType</key>

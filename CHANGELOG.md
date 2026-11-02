@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Replace private-bundle installation with portable setup and user-selected media.
+- Share shell configuration and build operations across command entry points.
+- Use a project-owned app/service identifier and add a first-run video chooser.
+- Configure native wallpaper and screen saver together; restore both slots selectively.
+- Separate media conversion from native registration and use async AVFoundation export/thumbnail APIs.
+- Add portable installer regression tests and a single local/CI check command.
+- Remove personal asset URLs and machine-specific instructions from public documentation.
+
 ## 1.5.0
 
 - Default to the verified local 4K H.264/AAC file; no website/network requests for local playback.

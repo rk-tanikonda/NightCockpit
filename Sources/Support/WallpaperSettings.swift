@@ -2,6 +2,10 @@ import Foundation
 
 /// Small preferences stay in UserDefaults. Videos are never copied into Git.
 struct WallpaperSettings {
+    static var bundledVideoURL: URL? {
+        Bundle.main.url(forResource: "wallpaper", withExtension: "mp4")
+    }
+
     private let defaults = UserDefaults.standard
     var fit: Bool {
         get { defaults.bool(forKey: "fit") }

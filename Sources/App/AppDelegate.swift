@@ -24,14 +24,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         buildMenu()
         observeWorkspace()
         if !CommandLine.arguments.contains("--background") { showControls() }
-        if !settings.streamMode, let path = settings.videoPath,
-           FileManager.default.isReadableFile(atPath: path) {
-            loadLocalVideo(URL(fileURLWithPath: path))
-        } else if let bundled = Bundle.main.url(forResource: "night-cockpit", withExtension: "mp4") {
-            loadLocalVideo(bundled)
-        } else {
+        if settings.streamMode, settings.streamURL != nil {
             usingStream = true
             rebuildPlayback()
+        } else if let path = settings.videoPath,
+           FileManager.default.isReadableFile(atPath: path) {
+            loadLocalVideo(URL(fileURLWithPath: path))
+        } else if let bundled = WallpaperSettings.bundledVideoURL {
+            loadLocalVideo(bundled)
+        } else {
+            usingStream = settings.streamURL != nil
+            rebuildPlayback()
+            if !usingStream { showControls() }
         }
     }
 
@@ -55,7 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 self.selectedURL = url
                 self.usingStream = false
-                if url == Bundle.main.url(forResource: "night-cockpit", withExtension: "mp4") {
+                if url == WallpaperSettings.bundledVideoURL {
                     self.settings.videoPath = nil
                 } else { self.settings.videoPath = url.path }
                 self.settings.streamMode = false
@@ -84,7 +88,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         if playbacks.isEmpty {
-            setStatus("No video configured. Choose a local video, or set streamURL in wallpaper.local.json and rebuild.")
+            setStatus("Choose a local video to start your wallpaper.")
         } else if usingStream {
             setStatus("Loading video stream…")
         } else {

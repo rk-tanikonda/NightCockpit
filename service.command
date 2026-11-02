@@ -1,16 +1,15 @@
 #!/bin/bash
 # Per-user service: no sudo, no system daemons, no sleep-setting changes.
 set -euo pipefail
-cd -- "$(dirname -- "$0")"
-if [[ "$(uname -s)" != Darwin ]]; then
-  echo 'This service is for macOS only.' >&2
-  exit 1
-fi
-SERVICE_LABEL='local.ramakrishna.nightcockpit.agent'
-SERVICE_DOMAIN="gui/$(id -u)"
-SERVICE_PLIST="$HOME/Library/LaunchAgents/$SERVICE_LABEL.plist"
-SERVICE_APP="$HOME/Applications/Night Cockpit.app"
-SERVICE_LOGS="$HOME/Library/Logs/NightCockpit"
+source "$(dirname -- "$0")/scripts/lib/common.sh"
+source "$PROJECT_ROOT/scripts/lib/build.sh"
+case "${1:-status}" in
+  --help|-h) echo 'Usage: bash service.command start|stop|status|restart|uninstall'; exit 0 ;;
+  start) [[ $# -le 2 && "${2:---use-build}" == --use-build ]] || fail 'Usage: bash service.command start [--use-build]' ;;
+  stop|status|restart|uninstall) [[ $# -le 1 ]] || fail 'Too many arguments.' ;;
+  *) fail 'Usage: bash service.command start|stop|status|restart|uninstall' ;;
+esac
+require_macos
 
 stop_job() {
   if /bin/launchctl print "$SERVICE_DOMAIN/$SERVICE_LABEL" >/dev/null 2>&1; then
@@ -18,29 +17,52 @@ stop_job() {
   fi
 }
 
+retire_previous_service() {
+  local info="$SERVICE_APP/Contents/Info.plist"
+  [[ -f "$info" ]] || return 0
+  local old_id old_executable
+  old_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$info" 2>/dev/null || true)"
+  old_executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$info" 2>/dev/null || true)"
+  # Derive migration from the installed app; no developer's old identifier is embedded.
+  if [[ "$old_executable" == "$APP_EXECUTABLE" && -n "$old_id" && "$old_id" != "$BUNDLE_ID" ]]; then
+    /bin/launchctl disable "$SERVICE_DOMAIN/$old_id.agent"
+    if /bin/launchctl print "$SERVICE_DOMAIN/$old_id.agent" >/dev/null 2>&1; then
+      /bin/launchctl bootout "$SERVICE_DOMAIN/$old_id.agent"
+    fi
+    echo 'Disabled the previous Night Cockpit login service. Original preferences and backups were preserved.'
+  fi
+}
+
 restore_lock_screen() {
-  local backup_file="$HOME/Library/Application Support/NightCockpit/LockScreenBackup/Index.plist"
+  local backup_file="$LOCK_BACKUP/Index.plist"
   local restore_tool="$SERVICE_APP/Contents/Resources/lockscreen-tool"
   if [[ -f "$backup_file" && -x "$restore_tool" ]]; then
     "$restore_tool" restore || echo 'Automatic wallpaper restore failed. Run bash lockscreen.command restore for details.' >&2
-    defaults write local.ramakrishna.nightcockpit lockScreenAudio -bool false
+    defaults write "$BUNDLE_ID" lockScreenAudio -bool false
   fi
 }
 
 case "${1:-status}" in
   start)
-    bash build.command --build-only
+    if [[ "${2:-}" == --use-build ]]; then
+      [[ -x "$APP/Contents/MacOS/$APP_EXECUTABLE" ]] || fail 'Build the app first.'
+    else
+      build_app
+    fi
     mkdir -p "$HOME/Applications" "$HOME/Library/LaunchAgents" "$SERVICE_LOGS"
     # Stop a registered service before replacing its executable.
     stop_job
-    /usr/bin/killall -TERM NightCockpit 2>/dev/null || true
-    /usr/bin/ditto "$PWD/dist/Night Cockpit.app" "$SERVICE_APP"
+    retire_previous_service
+    /usr/bin/killall -TERM "$APP_EXECUTABLE" 2>/dev/null || true
+    # Replace the installed bundle rather than merging stale resources.
+    rm -rf "$SERVICE_APP"
+    /usr/bin/ditto "$APP" "$SERVICE_APP"
     # Apple ships plutil; no Homebrew Python dependency is required.
     if [[ -f "$SERVICE_PLIST" ]]; then rm "$SERVICE_PLIST"; fi
     /usr/bin/plutil -create xml1 "$SERVICE_PLIST"
     /usr/bin/plutil -insert Label -string "$SERVICE_LABEL" "$SERVICE_PLIST"
     /usr/bin/plutil -insert ProgramArguments -json '[]' "$SERVICE_PLIST"
-    /usr/bin/plutil -insert ProgramArguments.0 -string "$SERVICE_APP/Contents/MacOS/NightCockpit" "$SERVICE_PLIST"
+    /usr/bin/plutil -insert ProgramArguments.0 -string "$SERVICE_APP/Contents/MacOS/$APP_EXECUTABLE" "$SERVICE_PLIST"
     /usr/bin/plutil -insert ProgramArguments.1 -string '--background' "$SERVICE_PLIST"
     /usr/bin/plutil -insert RunAtLoad -bool YES "$SERVICE_PLIST"
     /usr/bin/plutil -insert KeepAlive -bool YES "$SERVICE_PLIST"
@@ -54,7 +76,7 @@ case "${1:-status}" in
     /bin/launchctl bootstrap "$SERVICE_DOMAIN" "$SERVICE_PLIST"
     echo 'Started. Launches at login, restarts after exit/crash, and keeps the desktop muted.'
     echo 'Pauses during sleep/lock; resumes when your desktop session is active.'
-    echo "Stop: bash \"$PWD/service.command\" stop"
+    echo 'Stop: choose Stop wallpaper in the menu, or run bash service.command stop from the source folder.'
     ;;
   stop)
     stop_job

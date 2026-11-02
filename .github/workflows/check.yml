@@ -9,26 +9,11 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check shell syntax
+      - name: Check, test, build and verify without installing
+        run: bash check.command
+      - name: Compile native helper without changing system settings
         run: |
-          bash -n build.command
-          bash -n service.command
-          bash -n setup.command
-          bash -n lockscreen.command
-      - name: Test video player behavior
-        run: node --test Tests/*.test.cjs
-      - name: Check Lock Screen model without system changes
-        run: |
-          mkdir -p .build
-          xcrun swiftc -swift-version 5 -parse-as-library Tools/LockScreenModel.swift Tests/LockScreenFixtures.swift -o .build/model-tests
-          .build/model-tests
-      - name: Compile Lock Screen tool without running it
-        run: |
-          xcrun swiftc -swift-version 5 -parse-as-library -framework AppKit -framework AVFoundation Tools/LockScreenModel.swift Tools/LockScreenSetup.swift -o .build/lockscreen-tool
-      - name: Build app without launching
-        run: bash build.command --build-only
-      - name: Check packaged resources
-        run: |
-          test -x 'dist/Night Cockpit.app/Contents/MacOS/NightCockpit'
-          test -f 'dist/Night Cockpit.app/Contents/Resources/stream-player.html'
-          codesign --verify --deep --strict 'dist/Night Cockpit.app'
+          source scripts/lib/common.sh
+          source scripts/lib/build.sh
+          require_macos
+          build_lock_tool

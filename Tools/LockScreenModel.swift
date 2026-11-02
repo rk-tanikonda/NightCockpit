@@ -23,10 +23,10 @@ enum LockScreenModel {
         category.merge(cover) { _, new in new }
         categories.append(category)
         assets.append([
-            "id": assetID, "accessibilityLabel": "Night Cockpit 4K", "localizedNameKey": "Night Cockpit 4K",
+            "id": assetID, "accessibilityLabel": "Night Cockpit", "localizedNameKey": "Night Cockpit",
             "categories": [categoryID], "subcategories": [subcategoryID], "includeInShuffle": false,
             "showInTopLevel": true, "pointsOfInterest": [String: Any](), "preferredOrder": 0,
-            "previewImage": thumbnail.absoluteString, "shotID": "NIGHTCOCKPIT_4K",
+            "previewImage": thumbnail.absoluteString, "shotID": "NIGHTCOCKPIT",
             "url-4K-SDR-240FPS": video.absoluteString
         ])
         var result = manifest
@@ -47,11 +47,12 @@ enum LockScreenModel {
             guard var dictionary = value as? [String: Any] else { return value }
             if dictionary["Desktop"] != nil || dictionary["Idle"] != nil || dictionary["Linked"] != nil {
                 count += 1
-                if let linked = dictionary.removeValue(forKey: "Linked") {
-                    dictionary["Idle"] = linked
-                    dictionary["Type"] = "individual"
-                }
-                dictionary["Desktop"] = choice
+                // A Desktop-only choice gives the lock UI a still wallpaper while
+                // leaving the animated screen saver on its previous/default asset.
+                dictionary.removeValue(forKey: "Desktop")
+                dictionary.removeValue(forKey: "Idle")
+                dictionary["Linked"] = choice
+                dictionary["Type"] = "linked"
             } else {
                 for (key, child) in dictionary { dictionary[key] = walk(child) }
             }
@@ -70,13 +71,24 @@ enum LockScreenModel {
         return config["assetID"] as? String == assetID
     }
 
-    /// Restore only our Desktop choices. Preserve later changes to other slots.
+    static func selection(in store: [String: Any]) -> (wallpaper: Bool, screenSaver: Bool) {
+        guard let all = store["AllSpacesAndDisplays"] as? [String: Any] else { return (false, false) }
+        return (isOurChoice(all["Desktop"] ?? all["Linked"]), isOurChoice(all["Idle"] ?? all["Linked"]))
+    }
+
+    /// Restore slots still owned by us; preserve choices made by the user later.
     static func restore(current: [String: Any], original: [String: Any]) -> [String: Any] {
         var result = current
-        if isOurChoice(current["Desktop"]) {
-            result["Desktop"] = original["Desktop"] ?? original["Linked"]
+        let ownsLinked = isOurChoice(current["Linked"])
+        let ownsDesktop = isOurChoice(current["Desktop"])
+        let ownsIdle = isOurChoice(current["Idle"])
+        if ownsLinked || (ownsDesktop && ownsIdle && original["Linked"] != nil) {
+            for key in ["Desktop", "Idle", "Linked", "Type"] { result[key] = original[key] }
+        } else {
+            if ownsDesktop { result["Desktop"] = original["Desktop"] ?? original["Linked"] }
+            if ownsIdle { result["Idle"] = original["Idle"] ?? original["Linked"] }
         }
-        for (key, value) in current where key != "Desktop" && key != "Idle" {
+        for (key, value) in current where !["Desktop", "Idle", "Linked", "Type"].contains(key) {
             if let child = value as? [String: Any], let old = original[key] as? [String: Any] {
                 result[key] = restore(current: child, original: old)
             }

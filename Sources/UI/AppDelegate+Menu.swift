@@ -8,7 +8,7 @@ extension AppDelegate {
         let menu = NSMenu()
         addMenuItem(menu, title: "Settings / status…", action: #selector(showControls))
         addMenuItem(menu, title: "Change video…", action: #selector(chooseVideo), key: "o")
-        if Bundle.main.url(forResource: "night-cockpit", withExtension: "mp4") == nil {
+        if WallpaperSettings.bundledVideoURL == nil {
             addMenuItem(menu, title: "Use configured stream", action: #selector(useConfiguredStream))
         }
         addMenuItem(menu, title: "Reload wallpaper", action: #selector(reloadWallpaper))
@@ -47,7 +47,8 @@ extension AppDelegate {
             do { try restore.run(); restore.waitUntilExit() } catch { setStatus(error.localizedDescription) }
         }
         // Disable auto-start first, so deliberately stopping does not cause a restart.
-        let job = "gui/\(getuid())/local.ramakrishna.nightcockpit.agent"
+        guard let bundleID = Bundle.main.bundleIdentifier else { return }
+        let job = "gui/\(getuid())/\(bundleID).agent"
         runLaunchctl(["disable", job])
         runLaunchctl(["bootout", job])
         NSApp.terminate(nil)

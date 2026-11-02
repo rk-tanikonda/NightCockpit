@@ -1,27 +1,53 @@
 # Testing
 
-## Automated
+## Automated checks
+
+On macOS with Command Line Tools and Node.js 18+:
+
+```bash
+bash check.command
+```
+
+The same command runs in GitHub Actions. It checks shell syntax, browser player behavior, portable command interfaces, pure native-settings fixtures, compilation, resources, and signing. It builds without launching, installing a launch agent, or writing wallpaper preferences. The native helper also compiles in CI on systems older than macOS 26, without running installation.
+
+For quick development loops:
 
 ```bash
 node --test Tests/*.test.cjs
-bash -n build.command
-bash -n service.command
-bash build.command --build-only  # macOS only
+bash build.command --build-only
 ```
 
-The GitHub Actions workflow runs these on a macOS runner when the source is pushed. It validates compilation and app resources; it does not test a logged-in desktop, Secure Lock Screen, real upstream video availability, or overnight reliability.
+Native fixtures verify linked wallpaper/screen saver selection, restoration of linked and independent choices, preservation of later user edits, upgrade from Desktop-only choices, nested display/Space settings, idempotent manifest registration, and unsupported schema rejection.
 
-## Manual macOS acceptance checks
+## Portable installation checks
 
-- Launch a local test video and confirm it loops with no sound.
-- Place a normal application window over half the screen. Confirm the visible wallpaper area continues moving without clicking Finder.
-- Switch apps and Spaces, and enter/leave Mission Control. Icons must stay clickable and normal windows must stay above the wallpaper.
-- Reload a configured stream. Only black/video may appear; no website text or controls may appear.
-- Disconnect/reconnect the network. Verify retry messages and recovery; local playback must remain independent of network availability.
-- Pause/resume and change Fit. Test multiple displays and connect/disconnect a monitor.
-- Start the service, close Terminal, and log out/in. Verify startup without a settings window.
-- Kill only NightCockpit to verify service restart. Then use `service.command stop` and verify it stays stopped after login.
-- Sleep/wake the Mac. Verify playback resumes without audio.
-- Confirm the source URL host is allowed to serve the configured media. A successful regular-browser preview does not guarantee a standalone video stream will be accepted.
+- Extract source into a directory with spaces; run `setup.command` without any bundled video. Settings should offer **Change video…**.
+- Run the script from outside its source directory, passing a relative path containing spaces. Confirm it opens the intended movie.
+- Pass missing/empty/unreadable media or invalid options. Confirm errors occur before preference/service changes.
+- On macOS 13–25, default setup should work; `--lock-screen` should explain the version requirement before making changes.
+- Build with optional `Videos/wallpaper.mp4` and `wallpaper.local.json`; delete both and rebuild. Confirm stale resources are absent.
 
-Lock Screen support is experimental and must not be described as verified until it passes a real macOS 26 check. Run setup, lock using Control-Command-Q, confirm the local video and lock-only audio, unlock and confirm silence, then test display sleep/wake. Stop/restore must restore the prior wallpaper. The helper runs pure configuration fixtures before installation; those tests do not prove system rendering or lock-event delivery.
+## Manual macOS playback checks
+
+- Play your own local video; confirm it loops silently below clickable Finder icons.
+- Cover part of the desktop with a normal window. Confirm the exposed video continues playing.
+- Switch apps/Spaces and enter/leave Mission Control; normal windows remain above the wallpaper.
+- Test pause/resume, fit, multiple displays, and connecting/disconnecting a monitor.
+- Enable a configured stream and test disconnect/reconnect recovery. Local playback remains independent of network access.
+- Start the service, close Terminal, and log out/in. Confirm background startup without a settings window when a video is configured.
+- Terminate only NightCockpit to check launchd recovery, then stop the service and confirm it remains stopped after login.
+- Sleep/wake the Mac. Confirm silent desktop playback resumes without preventing sleep.
+
+## Native Lock Screen regression
+
+Use macOS 26+ and media you own. Keep the original backup. Do not describe this feature as device-verified until these checks pass:
+
+1. Run setup with `--video` and `--lock-screen`. Confirm registration selects both wallpaper and screen saver.
+2. Lock with Control-Command-Q and leave input idle. Observe motion for longer than the source clip and check the loop boundary.
+3. Move the pointer/type. macOS may switch to a still authentication background; distinguish that transition from a movie that never animates while idle.
+4. Check lock-only audio, unlock silence, and display/system sleep. Sound and video need not be frame-synchronized.
+5. Test stop/restore from an originally linked choice and from distinct wallpaper/screen saver choices. Both original choices must return.
+6. After install, choose a different wallpaper or screen saver in System Settings. Restore must preserve that later choice.
+7. Reinstall over the older Desktop-only configuration and confirm native animation and selective restore.
+
+A passed Swift build or fixture run establishes neither rendering nor overnight reliability. macOS controls native animation and may change its undocumented configuration format.

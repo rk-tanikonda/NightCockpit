@@ -1,19 +1,18 @@
 # Contributing
 
-Start with [the architecture guide](docs/ARCHITECTURE.md). Keep changes small and explain the user-visible problem in the pull request.
+Start with [the architecture guide](docs/ARCHITECTURE.md). Keep changes focused and describe the user-visible problem in your pull request.
 
 ## Development loop
 
-1. Use macOS 13+ with Apple's Command Line Tools (`xcode-select --install`).
-2. Run `bash build.command` to build and launch a development copy.
-3. Run `node --test Tests/*.test.cjs` for the video-player behavior tests. Node is a development tool, not an application dependency.
-4. Run `bash -n build.command` and `bash -n service.command` to check shell syntax.
-5. Follow [the Mac playback checklist](docs/TESTING.md) before reporting a fix as verified.
+1. Use macOS 13+ with Apple's Command Line Tools. Native Lock Screen development needs macOS 26+ and the macOS 15+ SDK.
+2. Run `bash build.command` to build and launch a development copy, without installing a service.
+3. Run `bash check.command` before submitting changes. Install Node.js 18+ for the development tests; the app itself does not need Node.
+4. Follow the [manual Mac checklist](docs/TESTING.md) for playback or system-integration changes.
 
-Use four spaces in Swift and shell files, two in HTML/JavaScript/JSON/YAML. Keep source files focused on one responsibility. Add comments for platform constraints and decisions; avoid comments that merely repeat each statement.
+Use four spaces in Swift and shell files, two in HTML/JavaScript/JSON/YAML. Keep files focused on one responsibility. Share shell paths/preflight in `scripts/lib/common.sh` and compilation in `scripts/lib/build.sh`; keep root commands as small entry points.
 
-Use a local video you own for development. Personal source URLs belong in `wallpaper.local.json`, which Git ignores. Do not commit media, credentials, application bundles or another project's code without the appropriate rights and attribution.
+Use media you own. Private stream URLs belong in ignored `wallpaper.local.json`. Do not commit media, credentials, application bundles, or machine-specific paths. Preserve third-party copyright and license notices when adapting code.
 
-Desktop playback must remain muted. Do not disable system sleep, change security settings or cover authentication UI. The experimental native Lock Screen path uses backed-up user wallpaper settings; changes require pure fixture checks and actual macOS 26 rendering/audio/restore verification before claiming device support.
+Desktop playback must remain muted. Preserve system sleep, security settings, and authentication UI. Native wallpaper changes require schema validation, backups, pure fixture coverage, and selective restore. Test linked and independent wallpaper/screen saver choices, including changes the user made after installation.
 
-Before committing, inspect `git diff --cached` and `git status --short`. Open a pull request with the trigger, resulting behavior and checks performed, and distinguish automated tests from manual Mac testing.
+Before opening a pull request, inspect `git diff` and `git status --short`. Include the trigger, resulting behavior, and checks performed. Distinguish automated checks from manual playback/lock-screen testing. Do not claim system rendering or audio synchronization based on compilation alone.
