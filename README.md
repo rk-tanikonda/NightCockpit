@@ -100,4 +100,4 @@ See [Architecture](docs/ARCHITECTURE.md), [Testing](docs/TESTING.md), and [Contr
 
 ## License
 
-Original source and documentation are [MIT licensed](LICENSE). The native settings model includes Apache-2.0 adaptations; see [third-party notices](THIRD_PARTY_NOTICES.md). The bundled original demo video and audio are [CC0 1.0](MEDIA_LICENSE.md). User-supplied footage is not covered by the source licenses. The third-party Formula One clip used in local development is not distributed; the included demo is a different, original clip.
+You may download, use, modify, and redistribute this project. Original source and documentation are [MIT licensed](LICENSE). The native settings model includes Apache-2.0 adaptations; see [third-party notices](THIRD_PARTY_NOTICES.md). The bundled original demo video and audio are [CC0 1.0](MEDIA_LICENSE.md). User-supplied footage is not covered by the source licenses. The third-party Formula One clip used in local development is not distributed; the included demo is a different, original clip.

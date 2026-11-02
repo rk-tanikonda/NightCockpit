@@ -1,5 +1,11 @@
 # Third-party notices
 
+The root MIT license covers Night Cockpit's original source code, build scripts,
+and documentation. The adaptations below retain their respective licenses.
+Original bundled video and audio are separately dedicated under CC0 1.0 in
+[MEDIA_LICENSE.md](MEDIA_LICENSE.md). No project license grants rights to
+users' third-party footage, music, or trademarks.
+
 `Tools/LockScreenModel.swift` adapts the macOS aerial manifest and wallpaper-choice editing approach from [W-Player](https://github.com/RiperYT/w-player).
 
 Copyright 2026 W-Player contributors. Licensed under the Apache License, Version 2.0; the complete license is in `LICENSES/Apache-2.0.txt`.
