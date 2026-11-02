@@ -3,13 +3,13 @@ import AVFoundation
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let settings = WallpaperSettings()
-    let lockAudio = LockAudioController()
     let lockDisplay = LockDisplayController()
     let nativeWallpaper = NativeWallpaperController()
     var statusItem: NSStatusItem!
     var pauseItem: NSMenuItem!
     var fitItem: NSMenuItem!
     var displayItem: NSMenuItem!
+    var soundItem: NSMenuItem?
     var controlWindow: NSWindow?
     let statusLabel = NSTextField(wrappingLabelWithString: "Starting…")
     var playbacks: [LocalVideoPlayback] = []
@@ -55,7 +55,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.settings.videoPath = url.path
                 self.reconcileScreens()
                 old.forEach { $0.close() }
-                self.lockAudio.configure(url)
                 // The poster setter must never replace a configured native aerial.
                 // Native repair owns every Space/display in this mode.
                 try await DesktopBackdrop.install(image, updateSystemWallpaper: !self.settings.nativeEnabled)
@@ -89,12 +88,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func applyNativeWallpaper() {
         guard let url = selectedURL else { return }
         settings.nativeEnabled = true
-        lockAudio.nativeReady = false
         setStatus("Preparing the Lock Screen video…")
         nativeWallpaper.run("synchronize", video: url) { [weak self] result in
             switch result {
             case .success:
-                self?.lockAudio.nativeReady = true
+                self?.soundItem?.state = NativePlaybackSettings.soundEnabled ? .on : .off
                 self?.setStatus("Desktop and native Lock Screen are ready.")
             case .failure(let error): self?.setStatus(error.localizedDescription)
             }
@@ -103,6 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func repairNativeWallpaper() {
         guard state.shouldRepairNative(settings.nativeEnabled) else { return }
+        guard NativePlaybackSettings.enabled else { applyNativeWallpaper(); return }
         if let url = selectedURL,
            let data = try? Data(contentsOf: DesktopBackdrop.directory.appendingPathComponent("NativeMovieSource.plist")),
            let record = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
@@ -111,9 +110,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         nativeWallpaper.run("repair") { [weak self] result in
             if case .failure(let error) = result {
-                self?.lockAudio.nativeReady = false
                 self?.setStatus(error.localizedDescription)
-            } else { self?.lockAudio.nativeReady = true }
+            }
         }
     }
 
@@ -142,7 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             do { try await Task.sleep(nanoseconds: 1_500_000_000) }
             catch { return }
             guard let self, !Task.isCancelled, self.state.shouldRepairNative(self.settings.nativeEnabled) else { return }
-            if !WallpaperIdentity.nativeDesktopSelected { self.repairNativeWallpaper() }
+            if !NativePlaybackSettings.enabled || !WallpaperIdentity.nativeDesktopSelected { self.repairNativeWallpaper() }
             self.maintenanceTask = nil
         }
     }
@@ -167,7 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showControls(); return true }
     func applicationWillTerminate(_ notification: Notification) {
         lockDisplay.stop()
-        loadTask?.cancel(); maintenanceTask?.cancel(); nativeWallpaper.cancel(); lockAudio.stop()
+        loadTask?.cancel(); maintenanceTask?.cancel(); nativeWallpaper.cancel()
         playbacks.forEach { $0.close() }
     }
 }

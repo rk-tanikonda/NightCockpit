@@ -88,6 +88,16 @@ struct LockScreenSetup {
                 print("Desktop-only configuration detected. Run lockscreen.command install to configure animation for both slots.")
             }
         }
+        if NativePlaybackSettings.enabled {
+            let movie = AVURLAsset(url: NativePlaybackSettings.movieURL)
+            let duration = try await movie.load(.duration)
+            let playable = try await movie.load(.isPlayable)
+            let tracks = try await movie.loadTracks(withMediaType: .video)
+            let audio = try await movie.loadTracks(withMediaType: .audio)
+            let fps = try await tracks.first?.load(.nominalFrameRate) ?? 0
+            print("Shared-clock movie: \(playable ? "playable" : "not playable"), \(String(format: "%.2f", duration.seconds)) seconds, \(fps) fps, \(audio.count) audio track(s)")
+            return
+        }
         let movie = aerials.appendingPathComponent("videos/\(LockScreenModel.assetID).mov")
         if files.fileExists(atPath: movie.path) {
             let asset = AVURLAsset(url: movie)

@@ -60,6 +60,10 @@ case "${1:-status}" in
     rm -rf "$SERVICE_APP"
     /usr/bin/ditto "$APP" "$SERVICE_APP"
     if [[ -d "$SERVICE_APP/Contents/Extensions/NightCockpitNative.appex" ]]; then
+      # Only the installed copy should resolve this provider ID. Leaving the
+      # checkout's build registered can make ExtensionKit launch stale code.
+      /usr/bin/pluginkit -r "$APP/Contents/Extensions/NightCockpitNative.appex" 2>/dev/null || true
+      /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -u "$APP" 2>/dev/null || true
       /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$SERVICE_APP"
       /usr/bin/pluginkit -a "$SERVICE_APP/Contents/Extensions/NightCockpitNative.appex"
     fi

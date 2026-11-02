@@ -12,7 +12,7 @@ W-Player's app, updater and Sparkle framework are not included.
 `SettingsProvider.swift`, and `Handler+Choices.swift` adapt the native wallpaper
 extension protocol and settings serialization from
 [Aerial](https://github.com/AerialScreensaver/Aerial). The remote-context format
-in `Handler.swift` also follows Aerial's implementation.
+in `Handler.swift` and snapshot encoding in `Snapshot.swift` also follow Aerial's implementation.
 
 Copyright (c) 2015–present Guillaume Louel and contributors. Licensed under MIT;
 the complete license is in `LICENSES/Aerial-MIT.txt`. Changes reduce the extension

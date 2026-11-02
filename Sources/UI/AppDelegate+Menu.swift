@@ -21,7 +21,8 @@ extension AppDelegate {
         }
         menu.addItem(.separator())
         let sound = addMenuItem(menu, title: "Sound while locked", action: #selector(toggleLockSound(_:)))
-        sound.state = (NativePlaybackSettings.enabled ? NativePlaybackSettings.soundEnabled : lockAudio.enabled) ? .on : .off
+        soundItem = sound
+        sound.state = NativePlaybackSettings.enabled && NativePlaybackSettings.soundEnabled ? .on : .off
         addMenuItem(menu, title: "Stop wallpaper", action: #selector(stopWallpaper), key: "q")
         statusItem.menu = menu
         updatePlayback()
@@ -42,8 +43,7 @@ extension AppDelegate {
             sender.state = NativePlaybackSettings.soundEnabled ? .on : .off
             return
         }
-        lockAudio.enabled.toggle()
-        sender.state = lockAudio.enabled ? .on : .off
+        setStatus("Apply your video to Lock Screen to enable synchronized sound.")
     }
 
     @objc func toggleLockDisplay(_ sender: NSMenuItem) {
@@ -55,7 +55,6 @@ extension AppDelegate {
     @objc func stopWallpaper() {
         // Disable lock repair before restoration and keep the UI responsive.
         state.stopping = true
-        lockAudio.nativeReady = false
         updatePlayback()
         loadTask?.cancel()
         maintenanceTask?.cancel()

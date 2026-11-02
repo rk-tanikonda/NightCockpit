@@ -22,13 +22,11 @@ case "${1:-status}" in
         "$BUILD_DIR/lockscreen-tool" synchronize "$VIDEO_PATH"
         defaults write "$BUNDLE_ID" videoPath -string "$VIDEO_PATH"
         defaults write "$BUNDLE_ID" nativeWallpaper -bool true
-        defaults write "$BUNDLE_ID" lockScreenAudio -bool true
         ;;
     repair) "$BUILD_DIR/lockscreen-tool" repair ;;
     restore)
         "$BUILD_DIR/lockscreen-tool" restore
         defaults write "$BUNDLE_ID" nativeWallpaper -bool false
-        defaults write "$BUNDLE_ID" lockScreenAudio -bool false
         /bin/launchctl kickstart -k "$SERVICE_DOMAIN/$SERVICE_LABEL" 2>/dev/null || true
         ;;
     status) "$BUILD_DIR/lockscreen-tool" status ;;

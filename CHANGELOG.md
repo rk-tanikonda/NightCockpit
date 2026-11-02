@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Replace the independent lock audio sidecar with a native extension using one AVPlayer for synchronized audio/video, private local media staging, and matching snapshots.
+
 - Add an opt-in display hold for locked native video, released on unlock, sleep, stop and process exit without changing power preferences.
 
 - Keep the animated background visible during Mission Control/App Exposé without taking focus or input.

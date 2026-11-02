@@ -60,7 +60,7 @@ enum WallpaperIdentity {
         let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/com.apple.wallpaper/Store/Index.plist")
         guard let data = try? Data(contentsOf: url),
               let store = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else { return false }
-        let current = coverage(in: store)
+        let current = coverage(in: store, requiredProvider: nativeProvider)
         return current.wallpaper && current.screenSaver
     }
 }

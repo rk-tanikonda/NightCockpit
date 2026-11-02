@@ -16,17 +16,21 @@ final class NativePlayback {
     private var timer: DispatchSourceTimer?
     private var observers: [NSObjectProtocol] = []
     private var locked = false
+    private var receivedLockState = false
     private var sleeping = false
     private var settings = NativePlaybackSettings.values
-    private var presentedFrames = 0
+    private(set) var presentedFrames = 0
+    private(set) var lastVideoTime: Double?
+    private let allowAudio: Bool
     var hosted: [String: HostedWallpaper] = [:]
 
-    init() {
+    init(url: URL = NativePlaybackSettings.movieURL, allowAudio: Bool = true) {
+        self.allowAudio = allowAudio
         player.isMuted = true
         player.volume = 0.5
         player.preventsDisplaySleepDuringVideoPlayback = false
         player.automaticallyWaitsToMinimizeStalling = false
-        let item = AVPlayerItem(url: NativePlaybackSettings.movieURL)
+        let item = AVPlayerItem(url: url)
         item.preferredForwardBufferDuration = 1
         itemObserver = player.observe(\.currentItem, options: [.initial, .new]) { [weak self] _, _ in
             DispatchQueue.main.async { self?.attachOutput() }
@@ -38,7 +42,7 @@ final class NativePlayback {
         let distributed = DistributedNotificationCenter.default()
         for (name, value) in [("com.apple.screenIsLocked", true), ("com.apple.screenIsUnlocked", false)] {
             observers.append(distributed.addObserver(forName: Notification.Name(name), object: nil, queue: .main) { [weak self] _ in
-                self?.locked = value; self?.reconcile()
+                self?.locked = value; self?.receivedLockState = true; self?.reconcile()
             })
         }
         observers.append(distributed.addObserver(forName: Notification.Name("org.nightcockpit.native.settingsChanged"), object: nil, queue: .main) { [weak self] _ in
@@ -67,7 +71,8 @@ final class NativePlayback {
     func reconcile() {
         let visible = hosted.values.filter { !$0.preview && $0.mode != "default" }
         let active = !sleeping && (locked || !visible.isEmpty) && !hosted.isEmpty
-        player.isMuted = !(active && (locked || visible.contains { $0.mode == "locked" }) && (settings["sound"] as? Bool ?? true))
+        let audioLocked = receivedLockState ? locked : visible.contains { $0.mode == "locked" }
+        player.isMuted = !(allowAudio && active && audioLocked && (settings["sound"] as? Bool ?? true))
         if active {
             player.playImmediately(atRate: 1)
             if timer == nil {
@@ -104,6 +109,7 @@ final class NativePlayback {
             host.video.sampleBufferRenderer.enqueue(sample)
         }
         presentedFrames += 1
+        lastVideoTime = displayedTime.seconds
         if presentedFrames == 1 || presentedFrames % 300 == 0 {
             debugLog("frame count=\(presentedFrames) player=\(player.currentTime().seconds) video=\(displayedTime.seconds) rate=\(player.rate) muted=\(player.isMuted)")
         }
@@ -125,6 +131,7 @@ final class HostedWallpaper {
             root.contentsGravity = .resizeAspectFill
         }
         video.frame = root.bounds; video.videoGravity = .resizeAspectFill
+        video.contentsScale = scale
         root.addSublayer(video); context.layer = root
     }
 }

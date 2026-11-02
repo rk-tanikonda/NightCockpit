@@ -40,11 +40,11 @@ On macOS 26+, optionally register the same video as macOS's own wallpaper and sc
 bash setup.command --video "$HOME/Movies/wallpaper.mp4" --lock-screen
 ```
 
-You can also choose **Apply video to Lock Screen** from the app menu. Native preparation runs in a separate process, keeping controls and gestures responsive. HEVC Main 10 conversion is video-only and preserves source timing and duration. Two temporal layers keep half the source frame rate in the base layer, avoiding sparse frames during native lock/unlock ramps. On macOS 27, setup verifies the temporal replay layers needed by the native aerial renderer; a plain playable HEVC export is insufficient. Original settings are backed up before changes, and every explicit Space/display choice and the global screen saver selection are checked after applying it.
+You can also choose **Apply video to Lock Screen** from the app menu. The installer registers a native wallpaper extension and stages a private copy of your local movie. The extension uses one AVQueuePlayer for both original tracks, preserving their timing and looping together at normal speed. There is no separate audio helper. Toggle **Sound while locked** in the menu; sound stops on unlock or sleep.
 
-Native configuration uses undocumented per-user macOS wallpaper files and remains experimental. If the aerial catalogue is missing, open **System Settings → Wallpaper** and download an Apple aerial once. Close the Wallpaper settings pane before applying your video so it cannot write stale settings back.
+Native configuration uses undocumented per-user wallpaper files and an undocumented extension protocol, so it remains experimental and may need updates when macOS changes. Original choices are backed up, and every explicit Space/display choice and the global screen saver selection are checked after applying. Close the Wallpaper settings pane before applying your video so it cannot write stale settings back.
 
-At startup and after unlock/Space changes settle, the app checks its prepared native registration and repairs a lost catalogue entry/selection without re-encoding. It does not run native maintenance or restart wallpaper services during locking. A separate audio-only player can play sound while locked, stopping on unlock/sleep. Audio is gated on successful native configuration; the video and audio clocks are independent. Toggle **Sound while locked** in the menu. This mode is background audio, not synchronized sound.
+At startup and after unlock/Space changes settle, the app repairs a lost registration using the prepared local copy. It does not restart wallpaper services during locking. The native extension retains one player across lock cycles; the desktop keeps its own muted player. No network service or media download is used.
 
 Test several lock/unlock cycles using **Control-Command-Q**, including the loop boundary. macOS controls the screen saver, authentication background, and display sleep; the app never places a window over authentication UI. Video may become still when macOS dismisses the screen saver for input. Device rendering and gesture behavior require a real Mac check.
 
@@ -57,8 +57,8 @@ Test several lock/unlock cycles using **Control-Command-Q**, including the loop 
 | `bash service.command start` | Build, install, and enable startup |
 | `bash service.command restart` | Restart the installed app |
 | `bash service.command uninstall` | Remove login startup while preserving app, video, and backups |
-| `bash lockscreen.command status` | Inspect native selection, movie, and temporal replay format |
-| `bash lockscreen.command repair` | Re-register the prepared native movie without encoding |
+| `bash lockscreen.command status` | Inspect native selection and shared-clock movie |
+| `bash lockscreen.command repair` | Repair the selected native provider without re-encoding |
 | `bash lockscreen.command restore` | Restore our native choices while preserving later user changes |
 | `bash build.command --build-only` | Build without launching |
 | `bash check.command` | Run development checks and build without installing |

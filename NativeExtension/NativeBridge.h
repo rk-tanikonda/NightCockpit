@@ -11,8 +11,6 @@
 #import <objc/runtime.h>
 #import <QuartzCore/QuartzCore.h>
 
-// The project's only compiled ObjC: an NSException catcher for the
-// private-API calls below (Swift cannot catch NSException).
 
 
 // MARK: - Private CAContext API (for remote rendering)

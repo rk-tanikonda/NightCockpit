@@ -10,7 +10,9 @@ final class NativeWallpaperHandler: NSObject, WallpaperExtensionXPCProtocol {
         let context = Self.requestContext(request)
         DispatchQueue.main.async {
             let options: [String: Any] = ["contentsScale": context.scale]
-            guard let remote = CAContext.perform(NSSelectorFromString("remoteContextWithOptions:"), with: options)?.takeUnretainedValue() as? CAContext,
+            let selector = NSSelectorFromString("remoteContextWithOptions:")
+            guard CAContext.responds(to: selector),
+                  let remote = CAContext.perform(selector, with: options)?.takeUnretainedValue() as? CAContext,
                   remote.contextId != 0, let wrapped = Self.wrap(remote.contextId) else {
                 reply(nil, NSError(domain: "NightCockpit.Native", code: 1, userInfo: [NSLocalizedDescriptionKey: "macOS cannot host the native video layer."])); return
             }
@@ -44,7 +46,9 @@ final class NativeWallpaperHandler: NSObject, WallpaperExtensionXPCProtocol {
             NativePlayback.shared.reconcile(); reply(nil)
         }
     }
-    func snapshot(withId id: Any?, reply: @escaping @Sendable (Any?, Error?) -> Void) { reply(nil, nil) }
+    func snapshot(withId id: Any?, reply: @escaping @Sendable (Any?, Error?) -> Void) {
+        DispatchQueue.main.async { reply(NativeSnapshot.image(), nil) }
+    }
     func handleDebugRequest(for request: Any?, reply: @escaping @Sendable (Any?, Error?) -> Void) { reply(nil, nil) }
     func handleNotification(withNamed name: Any?, reply: @escaping @Sendable (Error?) -> Void) {
         DispatchQueue.main.async { NativePlayback.shared.reconcile(); reply(nil) }
