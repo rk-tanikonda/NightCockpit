@@ -8,13 +8,13 @@ On macOS with Command Line Tools and Node.js 18+:
 bash check.command
 ```
 
-The check command validates shell syntax, portable installer arguments/paths/failure handling, native settings selection and selective restore, QuickTime temporal-group parsing (including malformed/truncated data), lifecycle transitions, Swift compilation, resources, and signing.
+The check command verifies the bundled demo checksum, decodes distinct video frames, checks video/audio metadata, and validates shell syntax, portable installer arguments/paths/failure handling, native settings selection and selective restore, QuickTime temporal-group parsing (including malformed/truncated data), lifecycle transitions, Swift compilation, resources, and signing.
 
 Desktop fixtures construct an unshown window and verify desktop level, mouse transparency, no focus/hit testing, full-screen exclusion, stationary Mission Control behavior, and a poster present before decoding. They need a logged-in desktop and explicitly skip otherwise. No fixture changes system wallpaper or installs a service. Pure fixtures do not prove gesture delivery or native rendering.
 
 ## Desktop regression checklist
 
-- Test source installation with no bundled media, paths containing spaces, and relative video paths from another directory.
+- Test a fresh source ZIP with the bundled demo: setup must select the installed app resource before launching, with native mode on macOS 26+ and desktop mode on older systems. Also test no bundled media, paths containing spaces, and relative video paths from another directory. Delete the extracted folder after installation and confirm the bundled demo still plays.
 - Select a valid local MP4/MOV. Desktop playback loops silently; invalid files do not replace a working video.
 - Double-click/open and drag Finder icons; drag-select empty desktop; scroll ordinary windows; use Mission Control, Show Desktop, and three/four-finger Spaces gestures.
 - Switch applications and full-screen apps. The wallpaper never becomes key, covers normal apps, or repeatedly raises itself.

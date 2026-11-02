@@ -19,6 +19,11 @@ fi
 require_macos
 build_model_tests
 build_app
+xcrun swiftc -swift-version 5 -parse-as-library -framework AppKit -framework AVFoundation \
+    Tests/BundledMediaFixtures.swift -o "$BUILD_DIR/bundled-media-tests"
+"$BUILD_DIR/bundled-media-tests" "$PROJECT_ROOT/Videos/wallpaper.mp4"
+cmp "$PROJECT_ROOT/Videos/wallpaper.mp4" "$APP/Contents/Resources/wallpaper.mp4"
+test -s "$APP/Contents/Resources/MEDIA_LICENSE.md"
 # Compile the opt-in real-movie verifier; never convert media or change settings here.
 xcrun swiftc -swift-version 5 -parse-as-library Tools/MovieFormat.swift Tests/NativeVideoFixtures.swift \
     -o "$BUILD_DIR/native-video-tests"

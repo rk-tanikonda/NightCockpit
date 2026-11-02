@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Include an original CC0 demo video with synthesized audio for fresh source downloads.
+- Make one-command setup choose compatible desktop/native defaults, preserve existing media, and install/configure/start only once.
+- Check builds on Intel and Apple Silicon and document platform limits.
+
 - Replace the independent lock audio sidecar with a native extension using one AVPlayer for synchronized audio/video, private local media staging, and matching snapshots.
 
 - Add an opt-in display hold for locked native video, released on unlock, sleep, stop and process exit without changing power preferences.

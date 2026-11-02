@@ -2,39 +2,52 @@
 
 A native macOS video wallpaper: your local video loops silently below Finder icons, stays out of mouse and trackpad input, and resumes after unlocking. A frame from the same video is installed underneath the player so startup, Spaces transitions, and decoder recovery keep the Night Cockpit background.
 
-Bring your own MP4 or MOV. No browser, network connection, Homebrew, Python, or third-party runtime dependencies are needed.
+An original night-driving demo with synthesized audio is included, so a fresh download runs without finding media first. The app also accepts your own MP4 or MOV. It runs locally, with no browser, Homebrew, Python, media service, or runtime network dependency.
 
-## Install
+![Bundled original Midnight Drive demo](docs/demo.png)
 
-Requires macOS 13+ and Apple's Command Line Tools. Install the tools once if needed:
+## Install with one command
 
-```bash
-xcode-select --install
-```
-
-Download/extract the source or clone this repository, open Terminal in the source folder, and run:
+[Download the source ZIP](https://github.com/rk-tanikonda/NightCockpit/archive/refs/heads/main.zip), extract it, open Terminal in the extracted folder, and run:
 
 ```bash
 bash setup.command
 ```
 
-Choose your local video through **Change video…** in the menu-bar controls. Or select it during installation:
+Setup builds and installs `~/Applications/Night Cockpit.app`, uses the bundled demo on a fresh installation, and enables login startup. It keeps a valid video you already selected when updating. The installed demo is loaded from the app bundle, so deleting the downloaded source folder does not break playback.
+
+Apple's Command Line Tools are a one-time prerequisite. If they are missing, run `xcode-select --install`, finish Apple's installation, then run setup. No paid developer certificate or administrator access is required by Night Cockpit's installer.
+
+| Mac | Default setup |
+| --- | --- |
+| macOS 13–15, Intel or Apple Silicon | Muted animated desktop |
+| macOS 26+, Intel or Apple Silicon | Desktop plus native Lock Screen video and synchronized sound |
+
+Native playback uses an undocumented macOS extension protocol. Build checks run on Intel and Apple Silicon; actual Lock Screen playback has been manually verified on Apple Silicon/macOS 27. OS updates can require compatibility fixes, and build checks are not a guarantee for every Mac/OS combination.
+
+On supported Macs the default setup keeps the display on while locked, as long as Night Cockpit's native mode is active. This uses more battery. To follow normal display sleep instead:
+
+```bash
+bash setup.command --allow-display-sleep
+```
+
+For desktop playback only:
+
+```bash
+bash setup.command --desktop-only
+```
+
+To use your own permitted video instead of the demo:
 
 ```bash
 bash setup.command --video "$HOME/Movies/wallpaper.mp4"
 ```
 
-Setup builds and installs `~/Applications/Night Cockpit.app` and enables per-user login startup. Commands locate their own source folder, support spaces in paths, and do not require administrator access. Relative video paths are resolved from the caller's directory. Keep externally selected video files at their chosen location.
-
-To try the app without installing a login service:
-
-```bash
-bash build.command
-```
+Commands locate their own source folder and support spaces in paths. Relative video paths resolve from the caller's directory. Externally selected videos must stay at their chosen location. To build and launch without installing login startup, use `bash build.command`.
 
 ## Native Lock Screen
 
-On macOS 26+, optionally register the same video as macOS's own wallpaper and screen saver:
+On macOS 26+, setup enables the same video as the native wallpaper and screen saver automatically. You can also request native mode explicitly:
 
 ```bash
 bash setup.command --video "$HOME/Movies/wallpaper.mp4" --lock-screen
@@ -67,13 +80,13 @@ Stopping restores the previous background while preserving the chosen native-mod
 
 Every command supports `--help`. The menu provides pause, fit, display selection, video selection, and stop. For wallpaper clicks to move other windows aside, set **System Settings → Desktop & Dock → Click wallpaper to reveal desktop → Always**. The app passes clicks through to macOS.
 
-The app retains its player and last frame across lock/wake and reuses windows when displays change. Wallpaper windows reject input/focus, stay at desktop level, and remain visible as a live background during Mission Control/App Exposé while macOS handles desktop selection. They do not get raised on app or Spaces changes. By default it follows macOS display sleep. Enable **Keep display awake while locked** to hold the display on only during locked native playback. This uses more battery; unlock, explicit sleep, stopping, or quitting releases the hold. It does not change power preferences or authentication settings.
+The app retains its player and last frame across lock/wake and reuses windows when displays change. Wallpaper windows reject input/focus, stay at desktop level, and remain visible as a live background during Mission Control/App Exposé while macOS handles desktop selection. They do not get raised on app or Spaces changes. The native setup enables **Keep display awake while locked**; turn this off in the menu or use `--allow-display-sleep` to follow macOS display sleep. This uses more battery; unlock, explicit sleep, stopping, or quitting releases the hold. It does not change power preferences or authentication settings.
 
 Logs live in `~/Library/Logs/NightCockpit/`. Prepared posters, source metadata, and restore backups live in `~/Library/Application Support/NightCockpit/`. Do not delete that directory if you want to restore your previous wallpaper.
 
 ## Configuration and development
 
-Local video paths stay in per-user preferences. Optionally place your own default at `Videos/wallpaper.mp4` before building; it is copied into the app and ignored by Git. Source builds contain no media by default. Streaming and WebKit are intentionally absent.
+Local video paths stay in per-user preferences. The original CC0 demo at `Videos/wallpaper.mp4` is tracked and copied into the app. Other personal media stays ignored by Git. See [media source](Videos/SOURCE.md) and [media license](MEDIA_LICENSE.md). Streaming and WebKit are intentionally absent.
 
 Development tests require Node.js 18+; the app does not:
 
@@ -87,4 +100,4 @@ See [Architecture](docs/ARCHITECTURE.md), [Testing](docs/TESTING.md), and [Contr
 
 ## License
 
-Original source and documentation are [MIT licensed](LICENSE). The native settings model includes Apache-2.0 adaptations; see [third-party notices](THIRD_PARTY_NOTICES.md). User-supplied footage is not covered by the source licenses. Use media you own or have permission to use.
+Original source and documentation are [MIT licensed](LICENSE). The native settings model includes Apache-2.0 adaptations; see [third-party notices](THIRD_PARTY_NOTICES.md). The bundled original demo video and audio are [CC0 1.0](MEDIA_LICENSE.md). User-supplied footage is not covered by the source licenses. The third-party Formula One clip used in local development is not distributed; the included demo is a different, original clip.

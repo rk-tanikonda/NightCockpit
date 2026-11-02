@@ -39,6 +39,7 @@ build_app() {
         build_native_extension
     fi
     cp "$PROJECT_ROOT/LICENSE" "$PROJECT_ROOT/THIRD_PARTY_NOTICES.md" "$APP/Contents/Resources/"
+    if [[ -f "$PROJECT_ROOT/MEDIA_LICENSE.md" ]]; then cp "$PROJECT_ROOT/MEDIA_LICENSE.md" "$APP/Contents/Resources/"; fi
     /usr/bin/ditto "$PROJECT_ROOT/LICENSES" "$APP/Contents/Resources/LICENSES"
     # Finder may attach metadata to .app folders in extracted/synced checkouts.
     # Strip only signing-incompatible metadata from our generated bundle.

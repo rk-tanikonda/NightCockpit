@@ -11,7 +11,7 @@ Start with [the architecture guide](docs/ARCHITECTURE.md). Keep changes focused 
 
 Use four spaces in Swift and shell files, two in HTML/JavaScript/JSON/YAML. Keep files focused on one responsibility. Share shell paths/preflight in `scripts/lib/common.sh` and compilation in `scripts/lib/build.sh`; keep root commands as small entry points.
 
-Use media you own. Do not commit media, credentials, application bundles, or machine-specific paths. Preserve third-party copyright and license notices when adapting code.
+Use media you own. The original CC0 `Videos/wallpaper.mp4` is the only bundled media. Do not commit other media without documented redistribution rights; never commit credentials, application bundles, or machine-specific paths. Preserve third-party copyright and license notices when adapting code.
 
 Desktop playback must remain muted. Preserve system sleep, security settings, and authentication UI. Native wallpaper changes require schema validation, backups, pure fixture coverage, and selective restore. Test linked and independent wallpaper/screen saver choices, including changes the user made after installation.
 

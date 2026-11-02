@@ -26,6 +26,9 @@ wallpaper.local.json
 *.wav
 *.m4a
 
+# The project's original CC0 demo is intentionally distributed with source.
+!/Videos/wallpaper.mp4
+
 # Local logs, backups, secrets and editor/OS state
 /Backups/
 *.log

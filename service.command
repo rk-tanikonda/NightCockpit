@@ -5,8 +5,8 @@ source "$(dirname -- "$0")/scripts/lib/common.sh"
 source "$PROJECT_ROOT/scripts/lib/build.sh"
 case "${1:-status}" in
   --help|-h) echo 'Usage: bash service.command start|stop|status|restart|uninstall'; exit 0 ;;
-  start) [[ $# -le 2 && "${2:---use-build}" == --use-build ]] || fail 'Usage: bash service.command start [--use-build]' ;;
-  stop|status|restart|uninstall) [[ $# -le 1 ]] || fail 'Too many arguments.' ;;
+  start|prepare) [[ $# -le 2 && "${2:---use-build}" == --use-build ]] || fail 'Usage: bash service.command start|prepare [--use-build]' ;;
+  stop|status|restart|uninstall|activate) [[ $# -le 1 ]] || fail 'Too many arguments.' ;;
   *) fail 'Usage: bash service.command start|stop|status|restart|uninstall' ;;
 esac
 require_macos
@@ -44,8 +44,16 @@ restore_lock_screen() {
   fi
 }
 
+activate_job() {
+    [[ -f "$SERVICE_PLIST" && -x "$SERVICE_APP/Contents/MacOS/$APP_EXECUTABLE" ]] || fail 'Prepare the installed app first.'
+    /bin/launchctl enable "$SERVICE_DOMAIN/$SERVICE_LABEL"
+    /bin/launchctl bootstrap "$SERVICE_DOMAIN" "$SERVICE_PLIST"
+    echo 'Started. Launches at login, restarts after exit/crash, and keeps the desktop muted.'
+    echo 'Stop: choose Stop wallpaper in the menu, or run bash service.command stop from the source folder.'
+}
+
 case "${1:-status}" in
-  start)
+  start|prepare)
     if [[ "${2:-}" == --use-build ]]; then
       [[ -x "$APP/Contents/MacOS/$APP_EXECUTABLE" ]] || fail 'Build the app first.'
     else
@@ -82,12 +90,13 @@ case "${1:-status}" in
     /usr/bin/plutil -insert StandardOutPath -string "$SERVICE_LOGS/output.log" "$SERVICE_PLIST"
     /usr/bin/plutil -insert StandardErrorPath -string "$SERVICE_LOGS/error.log" "$SERVICE_PLIST"
     /usr/bin/plutil -lint "$SERVICE_PLIST"
-    /bin/launchctl enable "$SERVICE_DOMAIN/$SERVICE_LABEL"
-    /bin/launchctl bootstrap "$SERVICE_DOMAIN" "$SERVICE_PLIST"
-    echo 'Started. Launches at login, restarts after exit/crash, and keeps the desktop muted.'
-    echo 'Pauses during sleep/lock; resumes when your desktop session is active.'
-    echo 'Stop: choose Stop wallpaper in the menu, or run bash service.command stop from the source folder.'
+    if [[ "$1" == prepare ]]; then
+      echo 'Prepared the installed app and login service; playback has not started yet.'
+    else
+      activate_job
+    fi
     ;;
+  activate) activate_job ;;
   stop)
     stop_job
     restore_lock_screen

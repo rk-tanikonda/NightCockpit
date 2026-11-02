@@ -20,4 +20,4 @@ to one user-selected local movie and a single AVPlayer timeline. Aerial's media,
 networking, playlists, overlays, and app are not included. The wallpaper extension
 protocol is undocumented and can change with macOS updates.
 
-No video or audio is distributed in this source repository. Media supplied by users is not covered by the source-code licenses. Users are responsible for the required permissions and attribution when distributing media with their builds.
+The bundled original `Videos/wallpaper.mp4` and its synthesized audio are dedicated to the public domain under CC0 1.0; see [MEDIA_LICENSE.md](MEDIA_LICENSE.md) and [media provenance](Videos/SOURCE.md). User-supplied media, including the third-party Formula One clip used during local development, is not distributed or covered by these licenses. Users need the required permissions when distributing their own media.
