@@ -37,6 +37,8 @@ Do not claim a real-device lock/gesture check based on successful compilation, m
 
 Native coverage fixtures include an otherwise-correct global selection with a conflicting per-Space image, an Idle-only global fallback, and restoring app overrides in Spaces created after installation.
 
+Display-hold regression: injected IOKit endpoints verify one acquisition per lock session, idempotent release, failure handling and teardown. State fixtures exclude unlock, disabled/native-off modes, sleep and stopping, while permitting the locked inactive session. Verify the live assertion appears only when the keep-awake option is enabled and the screen is locked; it must disappear on unlock/stop. Do not claim it overrides lid close or forced sleep.
+
 Lock-transition regression: repair must be suppressed while locked, asleep, or in an inactive session. A pending repair is cancelled on lock; after unlock, maintenance waits for the transition to settle. Check that the native renderer PID does not change just because the screen locks. Wallpaper-click behavior uses macOS Desktop & Dock’s Always setting; the app must remain mouse-transparent.
 
 For a real converted movie, the opt-in cadence check requires macOS 26+ and Swift 6.2+. It reads both files without changing settings and verifies every sample timestamp, duration, frame count, video-only output, native temporal groups, two HEVC temporal layers, and a base cadence of at least half the source rate (with tolerance for short clips/keyframes):

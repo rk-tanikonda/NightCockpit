@@ -78,7 +78,9 @@ final class LockAudioController {
     }
 
     private func updatePlayback() {
-        if enabled && nativeReady && locked && !sleeping {
+        // The native extension owns both tracks in synchronized mode. Never
+        // run the old sidecar alongside it, even if an old preference is true.
+        if !NativePlaybackSettings.enabled && enabled && nativeReady && locked && !sleeping {
             player?.play()
         } else {
             player?.pause()

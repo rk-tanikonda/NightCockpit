@@ -28,6 +28,10 @@ struct LockScreenSetup {
                 guard CommandLine.arguments.count == 3 else { throw LockScreenModel.failure("Pass a local video file.") }
                 try await install(URL(fileURLWithPath: CommandLine.arguments[2]))
                 try await repairAndVerify()
+            case "synchronize":
+                guard CommandLine.arguments.count == 3 else { throw LockScreenModel.failure("Pass a local video file.") }
+                try await installSynchronized(URL(fileURLWithPath: CommandLine.arguments[2]))
+                try await repairAndVerify()
             case "repair": try await repairAndVerify()
             case "restore": try restore()
             case "status": try await status()
@@ -66,6 +70,7 @@ struct LockScreenSetup {
     }
 
     static func status() async throws {
+        print("Synchronized native playback: \(NativePlaybackSettings.enabled ? "enabled" : "disabled")")
         print("macOS \(ProcessInfo.processInfo.operatingSystemVersionString)")
         print("Aerial manifest: \(files.fileExists(atPath: manifest.path) ? "available" : "missing")")
         print("Restore backup: \(files.fileExists(atPath: backup.appendingPathComponent("Index.plist").path) ? "available" : "missing")")
@@ -126,6 +131,10 @@ struct LockScreenSetup {
         let attributes = try files.attributesOfItem(atPath: source.path)
         let metadata: [String: Any] = ["path": source.path, "size": attributes[.size] ?? 0, "modified": attributes[.modificationDate] ?? Date()]
         try PropertyListSerialization.data(fromPropertyList: metadata, format: .xml, options: 0).write(to: sourceRecord, options: .atomic)
+        if NativePlaybackSettings.enabled {
+            var config = NativePlaybackSettings.values; config["enabled"] = false
+            try PropertyListSerialization.data(fromPropertyList: config, format: .binary, options: 0).write(to: NativePlaybackSettings.file, options: .atomic)
+        }
         // Replacing a movie at the same URL must invalidate the renderer's
         // cached player even when the catalogue and selections are unchanged.
         if !(try repair()) { reloadAgent() }
@@ -136,6 +145,7 @@ struct LockScreenSetup {
     /// Restore a lost catalogue/selection using the prepared movie, without re-encoding.
     @discardableResult
     static func repair() throws -> Bool {
+        if NativePlaybackSettings.enabled { return try repairSynchronized() }
         let video = aerials.appendingPathComponent("videos/\(LockScreenModel.assetID).mov")
         let thumbnail = aerials.appendingPathComponent("thumbnails/\(LockScreenModel.assetID).png")
         guard files.fileExists(atPath: video.path), files.fileExists(atPath: thumbnail.path), files.fileExists(atPath: sourceRecord.path) else {
@@ -152,7 +162,8 @@ struct LockScreenSetup {
             throw LockScreenModel.failure("Cannot read current native wallpaper settings.")
         }
         let nextManifest = try LockScreenModel.register(in: liveManifest, video: video, thumbnail: thumbnail)
-        let selected = LockScreenModel.selection(in: liveStore)
+        let coverage = WallpaperIdentity.coverage(in: liveStore, requiredProvider: WallpaperIdentity.aerialProvider)
+        let selected = (wallpaper: coverage.wallpaper, screenSaver: coverage.screenSaver)
         let manifestChanged = !NSDictionary(dictionary: liveManifest).isEqual(to: nextManifest)
         guard manifestChanged || !selected.wallpaper || !selected.screenSaver else { return false }
         let nextStore = try LockScreenModel.choose(in: liveStore)
@@ -168,6 +179,56 @@ struct LockScreenSetup {
             try? storeData.write(to: store, options: .atomic)
             throw error
         }
+        reloadAgent()
+        return true
+    }
+
+    @available(macOS 26.0, *)
+    static func installSynchronized(_ source: URL) async throws {
+        let asset = AVURLAsset(url: source)
+        guard try await asset.load(.isPlayable), !(try await asset.loadTracks(withMediaType: .video)).isEmpty else {
+            throw LockScreenModel.failure("Choose a playable local video.")
+        }
+        let storeData = try Data(contentsOf: store)
+        guard let settings = try PropertyListSerialization.propertyList(from: storeData, format: nil) as? [String: Any] else {
+            throw LockScreenModel.failure("Cannot read native settings.")
+        }
+        _ = try LockScreenModel.choose(in: settings, synchronized: true)
+        try files.createDirectory(at: NativePlaybackSettings.directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        let staged = NativePlaybackSettings.directory.appendingPathComponent(UUID().uuidString + ".mp4")
+        defer { try? files.removeItem(at: staged) }
+        try files.copyItem(at: source, to: staged)
+        try files.setAttributes([.posixPermissions: 0o600], ofItemAtPath: staged.path)
+        let image = try await DesktopBackdrop.image(for: source)
+        guard let png = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else {
+            throw LockScreenModel.failure("Cannot prepare the native video poster.")
+        }
+        try files.createDirectory(at: backup, withIntermediateDirectories: true)
+        try backUpOnce(storeData, name: "Index.plist")
+        if files.fileExists(atPath: manifest.path) { try backUpOnce(Data(contentsOf: manifest), name: "entries.json") }
+        if files.fileExists(atPath: NativePlaybackSettings.movieURL.path) {
+            _ = try files.replaceItemAt(NativePlaybackSettings.movieURL, withItemAt: staged)
+        } else { try files.moveItem(at: staged, to: NativePlaybackSettings.movieURL) }
+        try png.write(to: NativePlaybackSettings.posterURL, options: .atomic)
+        let config: [String: Any] = ["enabled": true, "sound": true, "source": source.path]
+        try PropertyListSerialization.data(fromPropertyList: config, format: .binary, options: 0).write(to: NativePlaybackSettings.file, options: .atomic)
+        try PropertyListSerialization.data(fromPropertyList: ["path": source.path], format: .binary, options: 0).write(to: sourceRecord, options: .atomic)
+        if !(try repairSynchronized()) { reloadAgent() }
+        print("Registered synchronized native playback. One player owns the original audio/video timeline.")
+    }
+
+    static func repairSynchronized() throws -> Bool {
+        guard files.fileExists(atPath: NativePlaybackSettings.movieURL.path) else {
+            throw LockScreenModel.failure("Reapply the synchronized native video; its private media copy is missing.")
+        }
+        let data = try Data(contentsOf: store)
+        guard let settings = try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else {
+            throw LockScreenModel.failure("Cannot read native settings.")
+        }
+        let coverage = WallpaperIdentity.coverage(in: settings, requiredProvider: WallpaperIdentity.nativeProvider)
+        if coverage.wallpaper && coverage.screenSaver { return false }
+        let chosen = try LockScreenModel.choose(in: settings, synchronized: true)
+        try PropertyListSerialization.data(fromPropertyList: chosen, format: .binary, options: 0).write(to: store, options: .atomic)
         reloadAgent()
         return true
     }
@@ -196,6 +257,10 @@ struct LockScreenSetup {
             throw error
         }
         reloadAgent()
+        if NativePlaybackSettings.enabled {
+            var config = NativePlaybackSettings.values; config["enabled"] = false
+            try PropertyListSerialization.data(fromPropertyList: config, format: .binary, options: 0).write(to: NativePlaybackSettings.file, options: .atomic)
+        }
         print("Restored our wallpaper choices. Other current wallpaper assets were preserved.")
     }
 
@@ -208,7 +273,7 @@ struct LockScreenSetup {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/killall")
         // The aerial renderer can outlive WallpaperAgent and retain a stale player.
-        process.arguments = ["WallpaperAerialsExtension", "WallpaperAgent"]
+        process.arguments = ["NightCockpitNative", "WallpaperAerialsExtension", "WallpaperAgent"]
         process.standardError = FileHandle.nullDevice
         do { try process.run(); process.waitUntilExit() } catch { print("Log out/in if the wallpaper has not refreshed.") }
     }

@@ -44,7 +44,7 @@ You can also choose **Apply video to Lock Screen** from the app menu. Native pre
 
 Native configuration uses undocumented per-user macOS wallpaper files and remains experimental. If the aerial catalogue is missing, open **System Settings → Wallpaper** and download an Apple aerial once. Close the Wallpaper settings pane before applying your video so it cannot write stale settings back.
 
-At startup and after unlock/Space changes settle, the app checks its prepared native registration and repairs a lost catalogue entry/selection without re-encoding. It does not run native maintenance or restart wallpaper services during locking. A separate audio-only player can play sound while locked, stopping on unlock/sleep. Audio is gated on successful native configuration; the video and audio clocks are independent. Toggle **Sound while locked** in the menu.
+At startup and after unlock/Space changes settle, the app checks its prepared native registration and repairs a lost catalogue entry/selection without re-encoding. It does not run native maintenance or restart wallpaper services during locking. A separate audio-only player can play sound while locked, stopping on unlock/sleep. Audio is gated on successful native configuration; the video and audio clocks are independent. Toggle **Sound while locked** in the menu. This mode is background audio, not synchronized sound.
 
 Test several lock/unlock cycles using **Control-Command-Q**, including the loop boundary. macOS controls the screen saver, authentication background, and display sleep; the app never places a window over authentication UI. Video may become still when macOS dismisses the screen saver for input. Device rendering and gesture behavior require a real Mac check.
 
@@ -67,7 +67,7 @@ Stopping restores the previous background while preserving the chosen native-mod
 
 Every command supports `--help`. The menu provides pause, fit, display selection, video selection, and stop. For wallpaper clicks to move other windows aside, set **System Settings → Desktop & Dock → Click wallpaper to reveal desktop → Always**. The app passes clicks through to macOS.
 
-The app retains its player and last frame across lock/wake and reuses windows when displays change. Wallpaper windows reject input/focus, stay at desktop level, and remain visible as a live background during Mission Control/App Exposé while macOS handles desktop selection. They do not get raised on app or Spaces changes. It never keeps the display awake.
+The app retains its player and last frame across lock/wake and reuses windows when displays change. Wallpaper windows reject input/focus, stay at desktop level, and remain visible as a live background during Mission Control/App Exposé while macOS handles desktop selection. They do not get raised on app or Spaces changes. By default it follows macOS display sleep. Enable **Keep display awake while locked** to hold the display on only during locked native playback. This uses more battery; unlock, explicit sleep, stopping, or quitting releases the hold. It does not change power preferences or authentication settings.
 
 Logs live in `~/Library/Logs/NightCockpit/`. Prepared posters, source metadata, and restore backups live in `~/Library/Application Support/NightCockpit/`. Do not delete that directory if you want to restore your previous wallpaper.
 

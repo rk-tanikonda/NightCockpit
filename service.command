@@ -59,6 +59,10 @@ case "${1:-status}" in
     # Replace the installed bundle rather than merging stale resources.
     rm -rf "$SERVICE_APP"
     /usr/bin/ditto "$APP" "$SERVICE_APP"
+    if [[ -d "$SERVICE_APP/Contents/Extensions/NightCockpitNative.appex" ]]; then
+      /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$SERVICE_APP"
+      /usr/bin/pluginkit -a "$SERVICE_APP/Contents/Extensions/NightCockpitNative.appex"
+    fi
     # Apple ships plutil; no Homebrew Python dependency is required.
     if [[ -f "$SERVICE_PLIST" ]]; then rm "$SERVICE_PLIST"; fi
     /usr/bin/plutil -create xml1 "$SERVICE_PLIST"

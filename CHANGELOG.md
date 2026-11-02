@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add an opt-in display hold for locked native video, released on unlock, sleep, stop and process exit without changing power preferences.
+
 - Keep the animated background visible during Mission Control/App Exposé without taking focus or input.
 - Raise the native HEVC base layer from one-eighth to one-half of the source frame rate to improve lock/unlock transition cadence; preserve source timestamps.
 - Reload the native renderer after replacing the movie even when its catalogue and selections already match.

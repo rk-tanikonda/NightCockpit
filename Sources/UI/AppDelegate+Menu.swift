@@ -16,10 +16,12 @@ extension AppDelegate {
         displayItem.state = settings.mainDisplayOnly ? .on : .off
         if #available(macOS 26.0, *) {
             addMenuItem(menu, title: "Apply video to Lock Screen", action: #selector(applyNativeWallpaper))
+            let keepAwake = addMenuItem(menu, title: "Keep display awake while locked", action: #selector(toggleLockDisplay(_:)))
+            keepAwake.state = settings.keepLockDisplayAwake ? .on : .off
         }
         menu.addItem(.separator())
         let sound = addMenuItem(menu, title: "Sound while locked", action: #selector(toggleLockSound(_:)))
-        sound.state = lockAudio.enabled ? .on : .off
+        sound.state = (NativePlaybackSettings.enabled ? NativePlaybackSettings.soundEnabled : lockAudio.enabled) ? .on : .off
         addMenuItem(menu, title: "Stop wallpaper", action: #selector(stopWallpaper), key: "q")
         statusItem.menu = menu
         updatePlayback()
@@ -34,8 +36,20 @@ extension AppDelegate {
     }
 
     @objc func toggleLockSound(_ sender: NSMenuItem) {
+        if NativePlaybackSettings.enabled {
+            do { try NativePlaybackSettings.setSound(!NativePlaybackSettings.soundEnabled) }
+            catch { setStatus(error.localizedDescription) }
+            sender.state = NativePlaybackSettings.soundEnabled ? .on : .off
+            return
+        }
         lockAudio.enabled.toggle()
         sender.state = lockAudio.enabled ? .on : .off
+    }
+
+    @objc func toggleLockDisplay(_ sender: NSMenuItem) {
+        settings.keepLockDisplayAwake.toggle()
+        sender.state = settings.keepLockDisplayAwake ? .on : .off
+        updatePlayback()
     }
 
     @objc func stopWallpaper() {

@@ -8,4 +8,16 @@ Reference source revisions: `AerialsManifest.swift` 96308adfd2e77ec46e8a7c7c1f2a
 
 W-Player's app, updater and Sparkle framework are not included.
 
+`NativeExtension/NativeBridge.h`, `Configuration.swift`, `SettingsModels.swift`,
+`SettingsProvider.swift`, and `Handler+Choices.swift` adapt the native wallpaper
+extension protocol and settings serialization from
+[Aerial](https://github.com/AerialScreensaver/Aerial). The remote-context format
+in `Handler.swift` also follows Aerial's implementation.
+
+Copyright (c) 2015–present Guillaume Louel and contributors. Licensed under MIT;
+the complete license is in `LICENSES/Aerial-MIT.txt`. Changes reduce the extension
+to one user-selected local movie and a single AVPlayer timeline. Aerial's media,
+networking, playlists, overlays, and app are not included. The wallpaper extension
+protocol is undocumented and can change with macOS updates.
+
 No video or audio is distributed in this source repository. Media supplied by users is not covered by the source-code licenses. Users are responsible for the required permissions and attribution when distributing media with their builds.

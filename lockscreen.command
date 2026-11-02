@@ -16,7 +16,10 @@ build_model_tests
 build_lock_tool
 case "${1:-status}" in
     install)
-        "$BUILD_DIR/lockscreen-tool" install "$VIDEO_PATH"
+        # Install/register the native extension before selecting it in macOS.
+        build_app
+        bash "$PROJECT_ROOT/service.command" start --use-build
+        "$BUILD_DIR/lockscreen-tool" synchronize "$VIDEO_PATH"
         defaults write "$BUNDLE_ID" videoPath -string "$VIDEO_PATH"
         defaults write "$BUNDLE_ID" nativeWallpaper -bool true
         defaults write "$BUNDLE_ID" lockScreenAudio -bool true

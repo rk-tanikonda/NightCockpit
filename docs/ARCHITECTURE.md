@@ -9,6 +9,7 @@ Night Cockpit has one local playback path. No streaming engine, browser document
 | `Sources/UI/` | Menu and explicit settings/file chooser |
 | `Sources/Playback/DesktopWindow.swift` | Desktop-level, noninteractive, nonactivating windows |
 | `Sources/Playback/LocalVideoPlayback.swift` | Retained AVQueuePlayer/looper, poster and video layers |
+| `Sources/Support/LockDisplayController.swift` | Opt-in, process-owned idle-display assertion with lifecycle release |
 | `Sources/Support/PlaybackState.swift` | Independent pause, lock, display sleep, system sleep, and session flags |
 | `Sources/Support/DesktopBackdrop.swift` | Same-video poster, original-background backup, and public desktop fallback |
 | `Sources/Support/WallpaperSettings.swift` | Per-user local preferences |
@@ -35,7 +36,7 @@ Aerial playback is owned by macOS. The helper encodes only the video track to na
 
 Installation validates schemas before conversion, keeps original backups once, and reads the latest live settings again before committing. Selection links wallpaper and screen saver. Refresh restarts only the wallpaper renderer/agent. A read-back checks all explicit per-Space/per-display overrides and global screen saver selection. Idle-only global nodes retain their macOS schema instead of being forced into a linked desktop choice. Repair reuses the prepared video and writes only if its own entry/selection was lost.
 
-The app runs native repair asynchronously at startup and after unlocked Space/display transitions settle. Maintenance is debounced for 1.5 seconds and cancelled on lock, inactive session, or sleep. Locked/sleeping states never launch repair; the native renderer is not restarted during the lock animation. It does not intercept the lock UI. Lock audio is gated on successful native registration, stops on unlock/sleep, and has an independent clock. These checks cannot prove actual animation; repeated real lock cycles are required.
+The app runs native repair asynchronously at startup and after unlocked Space/display transitions settle. Maintenance is debounced for 1.5 seconds and cancelled on lock, inactive session, or sleep. Locked/sleeping states never launch repair; the native renderer is not restarted during the lock animation. It does not intercept the lock UI. An optional `PreventUserIdleDisplaySleep` assertion keeps the display on only while locked native playback is requested. It is released on unlock, display/system sleep, stopping, or termination; no global power preferences are written. Lock audio is gated on successful native registration, stops on unlock/sleep, and has an independent clock. These checks cannot prove actual animation; repeated real lock cycles are required.
 
 ## Restore and packaging
 

@@ -35,10 +35,11 @@ enum LockScreenModel {
         return result
     }
 
-    static func choose(in store: [String: Any]) throws -> [String: Any] {
-        let config = try PropertyListSerialization.data(fromPropertyList: ["assetID": assetID], format: .binary, options: 0)
+    static func choose(in store: [String: Any], synchronized: Bool = false) throws -> [String: Any] {
+        let config = synchronized ? Data(WallpaperIdentity.nativeChoice.utf8) : try PropertyListSerialization.data(fromPropertyList: ["assetID": assetID], format: .binary, options: 0)
+        let selectedProvider = synchronized ? WallpaperIdentity.nativeProvider : provider
         let choice: [String: Any] = [
-            "Content": ["Choices": [["Provider": provider, "Configuration": config, "Files": [Any]()]],
+            "Content": ["Choices": [["Provider": selectedProvider, "Configuration": config, "Files": [Any]()]],
                         "Shuffle": "$null", "EncodedOptionValues": "$null"],
             "LastSet": Date(), "LastUse": Date()
         ]

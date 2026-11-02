@@ -4,11 +4,14 @@ import Foundation
 enum WallpaperIdentity {
     static let assetID = "8B5C4200-0000-4000-8000-000000000003"
     static let aerialProvider = "com.apple.wallpaper.choice.aerials"
+    static let nativeProvider = "org.nightcockpit.app.wallpaper"
+    static let nativeChoice = "night-cockpit"
     static func isOurChoice(_ value: Any?) -> Bool {
         guard let choice = value as? [String: Any], let content = choice["Content"] as? [String: Any],
               let item = (content["Choices"] as? [[String: Any]])?.first,
-              item["Provider"] as? String == aerialProvider,
-              let data = item["Configuration"] as? Data,
+              let data = item["Configuration"] as? Data else { return false }
+        if item["Provider"] as? String == nativeProvider { return data == Data(nativeChoice.utf8) }
+        guard item["Provider"] as? String == aerialProvider,
               let config = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else { return false }
         return config["assetID"] as? String == assetID
     }
@@ -22,20 +25,27 @@ enum WallpaperIdentity {
     }
 
     /// Every explicit override matters, including per-Space and per-display nodes.
-    static func coverage(in store: [String: Any]) -> Coverage {
+    static func coverage(in store: [String: Any], requiredProvider: String? = nil) -> Coverage {
         var result = Coverage()
+        func matches(_ value: Any?) -> Bool {
+            guard isOurChoice(value) else { return false }
+            guard let requiredProvider else { return true }
+            let choice = value as? [String: Any]
+            let content = choice?["Content"] as? [String: Any]
+            return (content?["Choices"] as? [[String: Any]])?.first?["Provider"] as? String == requiredProvider
+        }
         func walk(_ value: [String: Any], path: String) {
             if let linked = value["Linked"] {
                 result.desktopCount += 1; result.saverCount += 1
-                if !isOurChoice(linked) { result.wrongDesktops.append(path); result.wrongSavers.append(path) }
+                if !matches(linked) { result.wrongDesktops.append(path); result.wrongSavers.append(path) }
             } else {
                 if let desktop = value["Desktop"] {
                     result.desktopCount += 1
-                    if !isOurChoice(desktop) { result.wrongDesktops.append(path) }
+                    if !matches(desktop) { result.wrongDesktops.append(path) }
                 }
                 if let idle = value["Idle"] {
                     result.saverCount += 1
-                    if !isOurChoice(idle) { result.wrongSavers.append(path) }
+                    if !matches(idle) { result.wrongSavers.append(path) }
                 }
             }
             for (key, child) in value where !["Desktop", "Idle", "Linked"].contains(key) {

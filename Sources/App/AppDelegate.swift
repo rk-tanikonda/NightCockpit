@@ -4,6 +4,7 @@ import AVFoundation
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let settings = WallpaperSettings()
     let lockAudio = LockAudioController()
+    let lockDisplay = LockDisplayController()
     let nativeWallpaper = NativeWallpaperController()
     var statusItem: NSStatusItem!
     var pauseItem: NSMenuItem!
@@ -90,7 +91,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settings.nativeEnabled = true
         lockAudio.nativeReady = false
         setStatus("Preparing the Lock Screen video…")
-        nativeWallpaper.run("install", video: url) { [weak self] result in
+        nativeWallpaper.run("synchronize", video: url) { [weak self] result in
             switch result {
             case .success:
                 self?.lockAudio.nativeReady = true
@@ -117,6 +118,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func updatePlayback() {
+        lockDisplay.setActive(state.shouldHoldLockDisplay(settings.keepLockDisplayAwake, nativeEnabled: settings.nativeEnabled) && selectedURL != nil)
         playbacks.forEach { $0.setPaused(state.shouldPause) }
         pauseItem.title = state.manuallyPaused ? "Resume" : "Pause"
         statusItem.button?.image = NSImage(systemSymbolName: state.manuallyPaused ? "pause.rectangle.fill" : "play.rectangle.fill", accessibilityDescription: "Night Cockpit")
@@ -164,6 +166,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showControls(); return true }
     func applicationWillTerminate(_ notification: Notification) {
+        lockDisplay.stop()
         loadTask?.cancel(); maintenanceTask?.cancel(); nativeWallpaper.cancel(); lockAudio.stop()
         playbacks.forEach { $0.close() }
     }

@@ -16,6 +16,12 @@ struct LockScreenFixtures {
         precondition(selected.wallpaper && selected.screenSaver)
         let restored = LockScreenModel.restore(current: chosen, original: original)
         precondition(NSDictionary(dictionary: restored).isEqual(to: original))
+        let synchronized = try LockScreenModel.choose(in: original, synchronized: true)
+        let synchronizedCoverage = WallpaperIdentity.coverage(in: synchronized, requiredProvider: WallpaperIdentity.nativeProvider)
+        precondition(synchronizedCoverage.wallpaper && synchronizedCoverage.screenSaver)
+        precondition(!WallpaperIdentity.coverage(in: chosen, requiredProvider: WallpaperIdentity.nativeProvider).wallpaper)
+        precondition(!WallpaperIdentity.coverage(in: synchronized, requiredProvider: WallpaperIdentity.aerialProvider).wallpaper)
+        precondition(NSDictionary(dictionary: LockScreenModel.restore(current: synchronized, original: original)).isEqual(to: original))
 
         // Users may have independent wallpaper and screen saver choices.
         let oldIdle: [String: Any] = ["Content": ["Choices": [["Provider": "example.saver", "Configuration": Data()]]]]
@@ -108,6 +114,37 @@ struct LockScreenFixtures {
         transition.unlock()
         precondition(transition.shouldRepairNative(true))
         let restarted = PlaybackState()
+        // Opt-in display hold applies to the real locked session, including
+        // session resignation, and releases on every stop/sleep/unlock path.
+        var lockDisplayState = PlaybackState()
+        precondition(!lockDisplayState.shouldHoldLockDisplay(true, nativeEnabled: true))
+        lockDisplayState.locked = true; lockDisplayState.sessionActive = false
+        precondition(lockDisplayState.shouldHoldLockDisplay(true, nativeEnabled: true))
+        precondition(!lockDisplayState.shouldHoldLockDisplay(false, nativeEnabled: true))
+        precondition(!lockDisplayState.shouldHoldLockDisplay(true, nativeEnabled: false))
+        lockDisplayState.displayAsleep = true
+        precondition(!lockDisplayState.shouldHoldLockDisplay(true, nativeEnabled: true))
+        lockDisplayState.displayAsleep = false; lockDisplayState.systemAsleep = true
+        precondition(!lockDisplayState.shouldHoldLockDisplay(true, nativeEnabled: true))
+        lockDisplayState.systemAsleep = false; lockDisplayState.stopping = true
+        precondition(!lockDisplayState.shouldHoldLockDisplay(true, nativeEnabled: true))
+        lockDisplayState.stopping = false; lockDisplayState.unlock()
+        precondition(!lockDisplayState.shouldHoldLockDisplay(true, nativeEnabled: true))
+        // Inject assertion endpoints so fixtures never hold a real display on.
+        var acquired = 0, released: [UInt32] = []
+        var hold: LockDisplayController? = LockDisplayController(acquire: { acquired += 1; return 42 }, release: { released.append($0) })
+        hold?.setActive(false)
+        precondition(acquired == 0 && released.isEmpty)
+        hold?.setActive(true); hold?.setActive(true)
+        precondition(acquired == 1 && released.isEmpty)
+        hold?.setActive(false); hold?.stop()
+        precondition(released == [42])
+        hold?.setActive(true); hold = nil
+        precondition(acquired == 2 && released == [42, 42])
+        var attempts = 0
+        let failedHold = LockDisplayController(acquire: { attempts += 1; return nil }, release: { _ in fatalError("No assertion to release") })
+        failedHold.setActive(true); failedHold.setActive(false)
+        precondition(attempts == 1)
         precondition(restarted.shouldRepairNative(true) && !restarted.shouldRepairNative(false))
         func box(_ type: String, _ payload: Data) -> Data {
             let size = UInt32(payload.count + 8)

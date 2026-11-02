@@ -19,4 +19,8 @@ struct WallpaperSettings {
         get { defaults.bool(forKey: "nativeWallpaper") }
         nonmutating set { defaults.set(newValue, forKey: "nativeWallpaper") }
     }
+    var keepLockDisplayAwake: Bool {
+        get { defaults.bool(forKey: "keepLockDisplayAwake") }
+        nonmutating set { defaults.set(newValue, forKey: "keepLockDisplayAwake") }
+    }
 }
