@@ -1,0 +1,46 @@
+# Built applications, compiler output and packages
+/dist/
+/build/
+/.build/
+/DerivedData/
+*.app/
+*.dSYM/
+*.o
+*.swiftmodule
+*.swiftdoc
+*.swiftsourceinfo
+*.zip
+*.dmg
+
+# Personal media and configuration: not licensed with this source
+/Videos/*
+!/Videos/.gitkeep
+wallpaper.local.json
+*.mp4
+*.mov
+*.m4v
+*.webm
+*.mp3
+*.wav
+*.m4a
+
+# Local logs, backups, secrets and editor/OS state
+/Backups/
+*.log
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.key
+.DS_Store
+.AppleDouble
+._*
+.idea/
+.vscode/
+*.xcuserstate
+xcuserdata/
+node_modules/
+coverage/
+test-results/
+playwright-report/

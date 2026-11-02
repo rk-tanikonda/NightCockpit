@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Night Cockpit video surface</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+    video { display: block; width: 100vw; height: 100vh; object-fit: cover; pointer-events: none; }
+    video::-webkit-media-controls { display: none !important; }
+  </style>
+</head>
+<body>
+  <!-- This document contains only our player. No third-party page is loaded. -->
+  <video id="wallpaper" muted autoplay loop playsinline preload="auto" disablepictureinpicture></video>
+  <script>
+    (() => {
+      const config = __CONFIG_JSON__;
+      const video = document.getElementById('wallpaper');
+      let lastTime = -1;
+      let stalledTicks = 0;
+      let paused = config.paused;
+      const report = (kind, message) => {
+        window.webkit.messageHandlers.wallpaperStatus.postMessage({ kind, message });
+      };
+      const play = () => video.play().catch(error => report('error', error.message));
+
+      // These two functions are the entire Swift-to-JavaScript interface.
+      window.wallpaper = {
+        setPaused(value) {
+          paused = value;
+          stalledTicks = 0;
+          if (paused) video.pause(); else play();
+        },
+        setFit(value) { video.style.objectFit = value ? 'contain' : 'cover'; }
+      };
+      window.wallpaper.setFit(config.fit);
+      video.muted = true;
+      video.addEventListener('volumechange', () => { if (!video.muted) video.muted = true; });
+      video.addEventListener('playing', () => report('playing', 'Wallpaper playing.'));
+      video.addEventListener('error', () => report('error', `Video stream failed (media error ${video.error?.code ?? 'unknown'}).`));
+      video.addEventListener('waiting', () => report('buffering', 'Buffering video…'));
+      // No website, buttons, banners, cookie dialogs or page DOM are involved.
+      video.src = config.url;
+      if (paused) video.pause(); else play();
+
+      const loadDeadline = setTimeout(() => {
+        if (video.readyState < 2) report('error', 'The video has not loaded after 60 seconds.');
+      }, 60000);
+      video.addEventListener('loadeddata', () => clearTimeout(loadDeadline), { once: true });
+      setInterval(() => {
+        if (paused) return;
+        if (!video.muted) video.muted = true;
+        if (video.currentTime === lastTime) stalledTicks++; else stalledTicks = 0;
+        lastTime = video.currentTime;
+        if (video.paused) play();
+        if (stalledTicks >= 9) {
+          stalledTicks = 0;
+          report('error', 'Video stalled for 45 seconds.');
+        }
+      }, 5000);
+    })();
+  </script>
+</body>
+</html>

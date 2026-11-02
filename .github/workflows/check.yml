@@ -1,0 +1,24 @@
+name: Check source and macOS build
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check shell syntax
+        run: |
+          bash -n build.command
+          bash -n service.command
+      - name: Test video player behavior
+        run: node --test Tests/*.test.cjs
+      - name: Build app without launching
+        run: bash build.command --build-only
+      - name: Check packaged resources
+        run: |
+          test -x 'dist/Night Cockpit.app/Contents/MacOS/NightCockpit'
+          test -f 'dist/Night Cockpit.app/Contents/Resources/stream-player.html'
+          codesign --verify --deep --strict 'dist/Night Cockpit.app'
