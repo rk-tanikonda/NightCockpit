@@ -86,6 +86,7 @@ struct LockScreenFixtures {
         var playback = PlaybackState()
         precondition(!playback.shouldPause)
         playback.locked = true; playback.displayAsleep = true
+        precondition(!playback.shouldRepairNative(true))
         playback.systemAsleep = false // waking the CPU cannot resume the locked display
         precondition(playback.shouldPause)
         playback.displayAsleep = false
@@ -97,6 +98,15 @@ struct LockScreenFixtures {
         playback.stopping = true
         playback.unlock()
         precondition(playback.shouldPause && !playback.shouldRepairNative(true))
+        var transition = PlaybackState()
+        transition.sessionActive = false
+        precondition(!transition.shouldRepairNative(true))
+        transition.sessionActive = true; transition.systemAsleep = true
+        precondition(!transition.shouldRepairNative(true))
+        transition.systemAsleep = false; transition.displayAsleep = true
+        precondition(!transition.shouldRepairNative(true))
+        transition.unlock()
+        precondition(transition.shouldRepairNative(true))
         let restarted = PlaybackState()
         precondition(restarted.shouldRepairNative(true) && !restarted.shouldRepairNative(false))
         func box(_ type: String, _ payload: Data) -> Data {

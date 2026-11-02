@@ -8,7 +8,7 @@ struct PlaybackState {
     var systemAsleep = false
     var sessionActive = true
     var shouldPause: Bool { stopping || manuallyPaused || locked || displayAsleep || systemAsleep || !sessionActive }
-    func shouldRepairNative(_ desired: Bool) -> Bool { desired && !stopping }
+    func shouldRepairNative(_ desired: Bool) -> Bool { desired && !stopping && !locked && !displayAsleep && !systemAsleep && sessionActive }
     mutating func unlock() {
         locked = false; displayAsleep = false; systemAsleep = false; sessionActive = true
     }

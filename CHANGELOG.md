@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Defer native maintenance until unlock/Space transitions settle; cancel pending repair during locking and sleep to avoid renderer restarts during the lock animation.
+
 - Remove streaming, WebKit, browser resources, and private stream configuration.
 - Retain desktop players across lock/wake and display geometry changes.
 - Keep a same-video poster underneath playback and as the system fallback.

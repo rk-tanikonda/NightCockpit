@@ -36,3 +36,5 @@ Desktop fixtures construct an unshown window and verify desktop level, mouse tra
 Do not claim a real-device lock/gesture check based on successful compilation, metadata checks, or settings read-back alone. No test should change authentication, sleep/security settings, or place an overlay over the login UI.
 
 Native coverage fixtures include an otherwise-correct global selection with a conflicting per-Space image, an Idle-only global fallback, and restoring app overrides in Spaces created after installation.
+
+Lock-transition regression: repair must be suppressed while locked, asleep, or in an inactive session. A pending repair is cancelled on lock; after unlock, maintenance waits for the transition to settle. Check that the native renderer PID does not change just because the screen locks. Wallpaper-click behavior uses macOS Desktop & Dock’s Always setting; the app must remain mouse-transparent.

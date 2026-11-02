@@ -24,6 +24,11 @@ final class NativeWallpaperController {
         do { try child.run() }
         catch { process = nil; completion(.failure(error)) }
     }
+    /// Background maintenance must never restart the renderer during lock.
+    func cancelRepair() {
+        if process?.arguments?.first == "repair" { cancel() }
+    }
+
     func cancel() {
         process?.terminationHandler = nil
         process?.terminate()

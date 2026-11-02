@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var poster: CGImage?
     var state = PlaybackState()
     var loadTask: Task<Void, Never>?
+    var maintenanceTask: Task<Void, Never>?
     var generation = 0
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -132,20 +133,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     @objc func screensChanged() { reconcileScreens(); checkNativeSelection() }
     @objc func checkNativeSelection() {
-        if state.shouldRepairNative(settings.nativeEnabled) && !WallpaperIdentity.nativeDesktopSelected { repairNativeWallpaper() }
+        maintenanceTask?.cancel()
+        guard state.shouldRepairNative(settings.nativeEnabled) else { return }
+        // Wait for the Space/unlock transition to finish before any native I/O.
+        maintenanceTask = Task { @MainActor [weak self] in
+            do { try await Task.sleep(nanoseconds: 1_500_000_000) }
+            catch { return }
+            guard let self, !Task.isCancelled, self.state.shouldRepairNative(self.settings.nativeEnabled) else { return }
+            if !WallpaperIdentity.nativeDesktopSelected { self.repairNativeWallpaper() }
+            self.maintenanceTask = nil
+        }
     }
-    @objc func displaySlept() { state.displayAsleep = true; updatePlayback() }
-    @objc func displayWoke() { state.displayAsleep = false; reconcileScreens() }
-    @objc func systemSlept() { state.systemAsleep = true; updatePlayback() }
-    @objc func systemWoke() { state.systemAsleep = false; reconcileScreens() }
-    @objc func sessionResigned() { state.sessionActive = false; updatePlayback() }
-    @objc func sessionActivated() { state.sessionActive = true; updatePlayback() }
-    @objc func screenLocked() { state.locked = true; updatePlayback(); repairNativeWallpaper() }
-    @objc func screenUnlocked() { state.unlock(); updatePlayback() }
+
+    func suspendNativeMaintenance() {
+        maintenanceTask?.cancel(); maintenanceTask = nil
+        nativeWallpaper.cancelRepair()
+    }
+    @objc func displaySlept() { state.displayAsleep = true; updatePlayback(); suspendNativeMaintenance() }
+    @objc func displayWoke() { state.displayAsleep = false; reconcileScreens(); checkNativeSelection() }
+    @objc func systemSlept() { state.systemAsleep = true; updatePlayback(); suspendNativeMaintenance() }
+    @objc func systemWoke() { state.systemAsleep = false; reconcileScreens(); checkNativeSelection() }
+    @objc func sessionResigned() { state.sessionActive = false; updatePlayback(); suspendNativeMaintenance() }
+    @objc func sessionActivated() { state.sessionActive = true; updatePlayback(); checkNativeSelection() }
+    @objc func screenLocked() {
+        state.locked = true
+        updatePlayback()
+        suspendNativeMaintenance()
+    }
+    @objc func screenUnlocked() { state.unlock(); updatePlayback(); checkNativeSelection() }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showControls(); return true }
     func applicationWillTerminate(_ notification: Notification) {
-        loadTask?.cancel(); nativeWallpaper.cancel(); lockAudio.stop()
+        loadTask?.cancel(); maintenanceTask?.cancel(); nativeWallpaper.cancel(); lockAudio.stop()
         playbacks.forEach { $0.close() }
     }
 }

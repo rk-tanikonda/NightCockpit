@@ -44,6 +44,7 @@ extension AppDelegate {
         lockAudio.nativeReady = false
         updatePlayback()
         loadTask?.cancel()
+        maintenanceTask?.cancel()
         nativeWallpaper.cancel()
         nativeWallpaper.run("restore") { [weak self] result in
             if case .failure(let error) = result { self?.setStatus(error.localizedDescription); return }
