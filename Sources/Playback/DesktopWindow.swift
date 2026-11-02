@@ -8,7 +8,9 @@ final class DesktopWindow: NSWindow {
     static func make(on screen: NSScreen) -> DesktopWindow {
         let window = DesktopWindow(contentRect: screen.frame, styleMask: .borderless, backing: .buffered, defer: false, screen: screen)
         window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
-        window.collectionBehavior = [.canJoinAllSpaces, .transient, .ignoresCycle, .fullScreenNone]
+        // Stay behind the overview as a live background. Transient windows are
+        // hidden there, exposing the still poster and appearing to pause playback.
+        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenNone]
         window.isMovable = false
         window.isMovableByWindowBackground = false
         window.ignoresMouseEvents = true

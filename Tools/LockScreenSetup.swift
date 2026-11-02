@@ -126,13 +126,16 @@ struct LockScreenSetup {
         let attributes = try files.attributesOfItem(atPath: source.path)
         let metadata: [String: Any] = ["path": source.path, "size": attributes[.size] ?? 0, "modified": attributes[.modificationDate] ?? Date()]
         try PropertyListSerialization.data(fromPropertyList: metadata, format: .xml, options: 0).write(to: sourceRecord, options: .atomic)
-        try repair()
+        // Replacing a movie at the same URL must invalidate the renderer's
+        // cached player even when the catalogue and selections are unchanged.
+        if !(try repair()) { reloadAgent() }
         print("Registered Night Cockpit as the native wallpaper and screen saver.")
         print("Lock with Control-Command-Q to verify. Audio is a separate helper and may not be frame-synchronized.")
     }
 
     /// Restore a lost catalogue/selection using the prepared movie, without re-encoding.
-    static func repair() throws {
+    @discardableResult
+    static func repair() throws -> Bool {
         let video = aerials.appendingPathComponent("videos/\(LockScreenModel.assetID).mov")
         let thumbnail = aerials.appendingPathComponent("thumbnails/\(LockScreenModel.assetID).png")
         guard files.fileExists(atPath: video.path), files.fileExists(atPath: thumbnail.path), files.fileExists(atPath: sourceRecord.path) else {
@@ -151,7 +154,7 @@ struct LockScreenSetup {
         let nextManifest = try LockScreenModel.register(in: liveManifest, video: video, thumbnail: thumbnail)
         let selected = LockScreenModel.selection(in: liveStore)
         let manifestChanged = !NSDictionary(dictionary: liveManifest).isEqual(to: nextManifest)
-        guard manifestChanged || !selected.wallpaper || !selected.screenSaver else { return }
+        guard manifestChanged || !selected.wallpaper || !selected.screenSaver else { return false }
         let nextStore = try LockScreenModel.choose(in: liveStore)
         // Poster fallback may already have backed up the native store.
         try files.createDirectory(at: backup, withIntermediateDirectories: true)
@@ -166,6 +169,7 @@ struct LockScreenSetup {
             throw error
         }
         reloadAgent()
+        return true
     }
 
     static func restore() throws {

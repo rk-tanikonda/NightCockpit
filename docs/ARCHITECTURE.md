@@ -27,11 +27,11 @@ Validate and prepare the new video/poster before replacing existing windows. PNG
 
 Display reconciliation matches windows by display ID. Existing players survive geometry changes and wake; only added/removed displays create/close players. Local playback disables network-style stall waiting and resumes with `playImmediately`. Independent lifecycle flags prevent a display wake from unpausing a still-locked session; unlock clears sleep/session suspension while respecting a manual pause.
 
-Windows use the desktop window level, reject mouse events and hit testing, cannot become key/main, use transient behavior to hide in Mission Control/App Exposé, and opt out of full-screen spaces and window cycling. There are no global input monitors or gesture handlers, and no foreground ordering on app activation or Spaces changes.
+Windows use the desktop window level, reject mouse events and hit testing, cannot become key/main, use stationary behavior to keep the live background visible in Mission Control/App Exposé, and opt out of full-screen spaces and window cycling. There are no global input monitors or gesture handlers, and no foreground ordering on app activation or Spaces changes.
 
 ## Native video
 
-Aerial playback is owned by macOS. The helper encodes only the video track to native HEVC Main 10, requests a base temporal layer, and validates `tscl`/`tsas` sample groups on macOS 27. Reader/writer work runs in a separate process. Modern toolchains use asynchronous providers/receivers; older SDKs retain a bounded legacy path.
+Aerial playback is owned by macOS. The helper encodes only the video track to native HEVC Main 10, requests two temporal layers with half the source frame rate in the base layer, and validates `tscl`/`tsas` sample groups on macOS 27. Reader/writer work runs in a separate process. Replacing a movie at the same URL reloads the native renderer once, including when the catalogue and choices already match, so its cached player cannot retain the old encoding. Modern toolchains use asynchronous providers/receivers; older SDKs retain a bounded legacy path.
 
 Installation validates schemas before conversion, keeps original backups once, and reads the latest live settings again before committing. Selection links wallpaper and screen saver. Refresh restarts only the wallpaper renderer/agent. A read-back checks all explicit per-Space/per-display overrides and global screen saver selection. Idle-only global nodes retain their macOS schema instead of being forced into a linked desktop choice. Repair reuses the prepared video and writes only if its own entry/selection was lost.
 

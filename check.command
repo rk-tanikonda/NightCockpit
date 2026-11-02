@@ -19,6 +19,9 @@ fi
 require_macos
 build_model_tests
 build_app
+# Compile the opt-in real-movie verifier; never convert media or change settings here.
+xcrun swiftc -swift-version 5 -parse-as-library Tools/MovieFormat.swift Tests/NativeVideoFixtures.swift \
+    -o "$BUILD_DIR/native-video-tests"
 xcrun swiftc -swift-version 5 -parse-as-library -framework AppKit -framework AVFoundation -framework QuartzCore \
     Sources/Playback/DesktopWindow.swift Sources/Playback/LocalVideoPlayback.swift Sources/Support/DesktopBackdrop.swift \
     Tests/DesktopFixtures.swift -o "$BUILD_DIR/desktop-tests"

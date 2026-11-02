@@ -24,7 +24,11 @@ enum VideoPreparation {
                 AVVideoAverageBitRateKey: 16_000_000,
                 AVVideoExpectedSourceFrameRateKey: fps,
                 AVVideoMaxKeyFrameIntervalKey: Int(fps * 2),
-                kVTCompressionPropertyKey_BaseLayerFrameRate as String: Double(fps) / 8
+                // Native lock/unlock ramps can render only the base layer. At
+                // fps/8 a 30 fps clip falls to 3.75 fps during that transition.
+                // Two layers retain 15 fps there and the full source cadence
+                // during ordinary playback; sample timestamps stay unchanged.
+                kVTCompressionPropertyKey_BaseLayerFrameRate as String: Double(fps) / 2
             ]
         ]
         guard writer.canApply(outputSettings: settings, forMediaType: .video) else {

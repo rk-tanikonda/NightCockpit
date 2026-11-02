@@ -40,7 +40,7 @@ On macOS 26+, optionally register the same video as macOS's own wallpaper and sc
 bash setup.command --video "$HOME/Movies/wallpaper.mp4" --lock-screen
 ```
 
-You can also choose **Apply video to Lock Screen** from the app menu. Native preparation runs in a separate process, keeping controls and gestures responsive. HEVC Main 10 conversion is video-only and preserves the full source duration. On macOS 27, setup verifies the temporal replay layers needed by the native aerial renderer; a plain playable HEVC export is insufficient. Original settings are backed up before changes, and every explicit Space/display choice and the global screen saver selection are checked after applying it.
+You can also choose **Apply video to Lock Screen** from the app menu. Native preparation runs in a separate process, keeping controls and gestures responsive. HEVC Main 10 conversion is video-only and preserves source timing and duration. Two temporal layers keep half the source frame rate in the base layer, avoiding sparse frames during native lock/unlock ramps. On macOS 27, setup verifies the temporal replay layers needed by the native aerial renderer; a plain playable HEVC export is insufficient. Original settings are backed up before changes, and every explicit Space/display choice and the global screen saver selection are checked after applying it.
 
 Native configuration uses undocumented per-user macOS wallpaper files and remains experimental. If the aerial catalogue is missing, open **System Settings → Wallpaper** and download an Apple aerial once. Close the Wallpaper settings pane before applying your video so it cannot write stale settings back.
 
@@ -67,7 +67,7 @@ Stopping restores the previous background while preserving the chosen native-mod
 
 Every command supports `--help`. The menu provides pause, fit, display selection, video selection, and stop. For wallpaper clicks to move other windows aside, set **System Settings → Desktop & Dock → Click wallpaper to reveal desktop → Always**. The app passes clicks through to macOS.
 
-The app retains its player and last frame across lock/wake and reuses windows when displays change. Wallpaper windows reject input/focus, stay at desktop level, and hide during Mission Control/App Exposé so macOS handles desktop selection. They do not get raised on app or Spaces changes. It never keeps the display awake.
+The app retains its player and last frame across lock/wake and reuses windows when displays change. Wallpaper windows reject input/focus, stay at desktop level, and remain visible as a live background during Mission Control/App Exposé while macOS handles desktop selection. They do not get raised on app or Spaces changes. It never keeps the display awake.
 
 Logs live in `~/Library/Logs/NightCockpit/`. Prepared posters, source metadata, and restore backups live in `~/Library/Application Support/NightCockpit/`. Do not delete that directory if you want to restore your previous wallpaper.
 

@@ -10,7 +10,7 @@ bash check.command
 
 The check command validates shell syntax, portable installer arguments/paths/failure handling, native settings selection and selective restore, QuickTime temporal-group parsing (including malformed/truncated data), lifecycle transitions, Swift compilation, resources, and signing.
 
-Desktop fixtures construct an unshown window and verify desktop level, mouse transparency, no focus/hit testing, full-screen exclusion, transient Mission Control behavior, and a poster present before decoding. They need a logged-in desktop and explicitly skip otherwise. No fixture changes system wallpaper or installs a service. Pure fixtures do not prove gesture delivery or native rendering.
+Desktop fixtures construct an unshown window and verify desktop level, mouse transparency, no focus/hit testing, full-screen exclusion, stationary Mission Control behavior, and a poster present before decoding. They need a logged-in desktop and explicitly skip otherwise. No fixture changes system wallpaper or installs a service. Pure fixtures do not prove gesture delivery or native rendering.
 
 ## Desktop regression checklist
 
@@ -20,14 +20,14 @@ Desktop fixtures construct an unshown window and verify desktop level, mouse tra
 - Switch applications and full-screen apps. The wallpaper never becomes key, covers normal apps, or repeatedly raises itself.
 - Lock/unlock repeatedly. Playback resumes immediately from its retained player; before a decoded frame arrives, the same-video poster remains visible.
 - Connect/disconnect a display and sleep/wake. Existing display players should not be recreated. Manual pause survives unlock.
-- Inspect Mission Control/Spaces thumbnails and app startup. The underlying image must come from the chosen video, not the earlier Apple wallpaper.
+- Keep Mission Control/App Exposé open for several seconds: the desktop background should continue moving, and clicking wallpaper after dismissal must reach macOS. Inspect Spaces thumbnails and app startup. The underlying image must come from the chosen video, not the earlier Apple wallpaper.
 - Stop/uninstall and confirm original background choices return. A later user-selected wallpaper must survive restore.
 
 ## Native macOS 26/27 checklist
 
 1. Apply the video to Lock Screen, with the Wallpaper settings pane closed.
 2. Confirm status reports both native selections and a playable movie. On macOS 27, temporal replay layers must be present; a generic HEVC export is insufficient.
-3. Lock with Control-Command-Q and observe the video for more than one complete source loop. Repeat at least three unlock/re-lock cycles.
+3. Check motion immediately after locking and after the native ramp settles. Reapplying the same video must refresh the renderer even if its choices are unchanged. Lock with Control-Command-Q and observe the video for more than one complete source loop. Repeat at least three unlock/re-lock cycles.
 4. Leave input idle, then interact with authentication. Distinguish macOS dismissing the screen saver from a video that never animates.
 5. Confirm lock-only sound and immediate unlock/sleep silence. Failed native preparation must not enable audio by itself.
 6. Test repair after removing only the app's own native selection. It should reuse the prepared movie without another conversion.
@@ -38,3 +38,12 @@ Do not claim a real-device lock/gesture check based on successful compilation, m
 Native coverage fixtures include an otherwise-correct global selection with a conflicting per-Space image, an Idle-only global fallback, and restoring app overrides in Spaces created after installation.
 
 Lock-transition regression: repair must be suppressed while locked, asleep, or in an inactive session. A pending repair is cancelled on lock; after unlock, maintenance waits for the transition to settle. Check that the native renderer PID does not change just because the screen locks. Wallpaper-click behavior uses macOS Desktop & Dock’s Always setting; the app must remain mouse-transparent.
+
+For a real converted movie, the opt-in cadence check requires macOS 26+ and Swift 6.2+. It reads both files without changing settings and verifies every sample timestamp, duration, frame count, video-only output, native temporal groups, two HEVC temporal layers, and a base cadence of at least half the source rate (with tolerance for short clips/keyframes):
+
+```bash
+mkdir -p .build/module-cache
+CLANG_MODULE_CACHE_PATH="$PWD/.build/module-cache" xcrun swiftc -swift-version 5 -parse-as-library \
+  Tools/MovieFormat.swift Tests/NativeVideoFixtures.swift -o .build/native-video-tests
+.build/native-video-tests /path/to/source.mp4 /path/to/prepared.mov
+```

@@ -13,8 +13,8 @@ import AVFoundation
         precondition(window.level.rawValue == Int(CGWindowLevelForKey(.desktopWindow)))
         precondition(window.collectionBehavior.contains(.fullScreenNone))
         precondition(window.collectionBehavior.contains(.ignoresCycle))
-        precondition(window.collectionBehavior.contains(.transient))
-        precondition(!window.collectionBehavior.contains(.stationary))
+        precondition(window.collectionBehavior.contains(.stationary))
+        precondition(!window.collectionBehavior.contains(.transient))
         precondition(!window.isVisible)
         let pixels = CGContext(data: nil, width: 2, height: 2, bitsPerComponent: 8, bytesPerRow: 8,
                                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
