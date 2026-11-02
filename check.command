@@ -19,6 +19,12 @@ fi
 require_macos
 build_model_tests
 build_app
+xcrun swiftc -swift-version 5 -parse-as-library -framework AppKit -framework AVFoundation -framework QuartzCore \
+    Sources/Playback/DesktopWindow.swift Sources/Playback/LocalVideoPlayback.swift Sources/Support/DesktopBackdrop.swift \
+    Tests/DesktopFixtures.swift -o "$BUILD_DIR/desktop-tests"
+"$BUILD_DIR/desktop-tests"
+/usr/bin/xattr -dr com.apple.FinderInfo "$APP" 2>/dev/null || true
+/usr/bin/xattr -dr com.apple.ResourceFork "$APP" 2>/dev/null || true
 /usr/bin/codesign --verify --deep --strict "$APP"
-test -f "$APP/Contents/Resources/stream-player.html"
+test ! -e "$APP/Contents/Resources/stream-player.html"
 echo 'Checks passed. The app was built without launching or changing system settings.'

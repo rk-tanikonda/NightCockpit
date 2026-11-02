@@ -1,6 +1,6 @@
 # Testing
 
-## Automated checks
+## Automated
 
 On macOS with Command Line Tools and Node.js 18+:
 
@@ -8,46 +8,31 @@ On macOS with Command Line Tools and Node.js 18+:
 bash check.command
 ```
 
-The same command runs in GitHub Actions. It checks shell syntax, browser player behavior, portable command interfaces, pure native-settings fixtures, compilation, resources, and signing. It builds without launching, installing a launch agent, or writing wallpaper preferences. The native helper also compiles in CI on systems older than macOS 26, without running installation.
+The check command validates shell syntax, portable installer arguments/paths/failure handling, native settings selection and selective restore, QuickTime temporal-group parsing (including malformed/truncated data), lifecycle transitions, Swift compilation, resources, and signing.
 
-For quick development loops:
+Desktop fixtures construct an unshown window and verify desktop level, mouse transparency, no focus/hit testing, full-screen exclusion, transient Mission Control behavior, and a poster present before decoding. They need a logged-in desktop and explicitly skip otherwise. No fixture changes system wallpaper or installs a service. Pure fixtures do not prove gesture delivery or native rendering.
 
-```bash
-node --test Tests/*.test.cjs
-bash build.command --build-only
-```
+## Desktop regression checklist
 
-Native fixtures verify linked wallpaper/screen saver selection, restoration of linked and independent choices, preservation of later user edits, upgrade from Desktop-only choices, nested display/Space settings, idempotent manifest registration, and unsupported schema rejection.
+- Test source installation with no bundled media, paths containing spaces, and relative video paths from another directory.
+- Select a valid local MP4/MOV. Desktop playback loops silently; invalid files do not replace a working video.
+- Double-click/open and drag Finder icons; drag-select empty desktop; scroll ordinary windows; use Mission Control, Show Desktop, and three/four-finger Spaces gestures.
+- Switch applications and full-screen apps. The wallpaper never becomes key, covers normal apps, or repeatedly raises itself.
+- Lock/unlock repeatedly. Playback resumes immediately from its retained player; before a decoded frame arrives, the same-video poster remains visible.
+- Connect/disconnect a display and sleep/wake. Existing display players should not be recreated. Manual pause survives unlock.
+- Inspect Mission Control/Spaces thumbnails and app startup. The underlying image must come from the chosen video, not the earlier Apple wallpaper.
+- Stop/uninstall and confirm original background choices return. A later user-selected wallpaper must survive restore.
 
-## Portable installation checks
+## Native macOS 26/27 checklist
 
-- Extract source into a directory with spaces; run `setup.command` without any bundled video. Settings should offer **Change video…**.
-- Run the script from outside its source directory, passing a relative path containing spaces. Confirm it opens the intended movie.
-- Pass missing/empty/unreadable media or invalid options. Confirm errors occur before preference/service changes.
-- On macOS 13–25, default setup should work; `--lock-screen` should explain the version requirement before making changes.
-- Build with optional `Videos/wallpaper.mp4` and `wallpaper.local.json`; delete both and rebuild. Confirm stale resources are absent.
+1. Apply the video to Lock Screen, with the Wallpaper settings pane closed.
+2. Confirm status reports both native selections and a playable movie. On macOS 27, temporal replay layers must be present; a generic HEVC export is insufficient.
+3. Lock with Control-Command-Q and observe the video for more than one complete source loop. Repeat at least three unlock/re-lock cycles.
+4. Leave input idle, then interact with authentication. Distinguish macOS dismissing the screen saver from a video that never animates.
+5. Confirm lock-only sound and immediate unlock/sleep silence. Failed native preparation must not enable audio by itself.
+6. Test repair after removing only the app's own native selection. It should reuse the prepared movie without another conversion.
+7. Restore from originally linked and separate wallpaper/screen saver choices; preserve later user changes.
 
-## Manual macOS playback checks
+Do not claim a real-device lock/gesture check based on successful compilation, metadata checks, or settings read-back alone. No test should change authentication, sleep/security settings, or place an overlay over the login UI.
 
-- Play your own local video; confirm it loops silently below clickable Finder icons.
-- Cover part of the desktop with a normal window. Confirm the exposed video continues playing.
-- Switch apps/Spaces and enter/leave Mission Control; normal windows remain above the wallpaper.
-- Test pause/resume, fit, multiple displays, and connecting/disconnecting a monitor.
-- Enable a configured stream and test disconnect/reconnect recovery. Local playback remains independent of network access.
-- Start the service, close Terminal, and log out/in. Confirm background startup without a settings window when a video is configured.
-- Terminate only NightCockpit to check launchd recovery, then stop the service and confirm it remains stopped after login.
-- Sleep/wake the Mac. Confirm silent desktop playback resumes without preventing sleep.
-
-## Native Lock Screen regression
-
-Use macOS 26+ and media you own. Keep the original backup. Do not describe this feature as device-verified until these checks pass:
-
-1. Run setup with `--video` and `--lock-screen`. Confirm registration selects both wallpaper and screen saver.
-2. Lock with Control-Command-Q and leave input idle. Observe motion for longer than the source clip and check the loop boundary.
-3. Move the pointer/type. macOS may switch to a still authentication background; distinguish that transition from a movie that never animates while idle.
-4. Check lock-only audio, unlock silence, and display/system sleep. Sound and video need not be frame-synchronized.
-5. Test stop/restore from an originally linked choice and from distinct wallpaper/screen saver choices. Both original choices must return.
-6. After install, choose a different wallpaper or screen saver in System Settings. Restore must preserve that later choice.
-7. Reinstall over the older Desktop-only configuration and confirm native animation and selective restore.
-
-A passed Swift build or fixture run establishes neither rendering nor overnight reliability. macOS controls native animation and may change its undocumented configuration format.
+Native coverage fixtures include an otherwise-correct global selection with a conflicting per-Space image, an Idle-only global fallback, and restoring app overrides in Spaces created after installation.

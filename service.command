@@ -38,7 +38,9 @@ restore_lock_screen() {
   local restore_tool="$SERVICE_APP/Contents/Resources/lockscreen-tool"
   if [[ -f "$backup_file" && -x "$restore_tool" ]]; then
     "$restore_tool" restore || echo 'Automatic wallpaper restore failed. Run bash lockscreen.command restore for details.' >&2
-    defaults write "$BUNDLE_ID" lockScreenAudio -bool false
+  fi
+  if [[ -x "$SERVICE_APP/Contents/MacOS/$APP_EXECUTABLE" ]]; then
+    "$SERVICE_APP/Contents/MacOS/$APP_EXECUTABLE" --restore-background
   fi
 }
 

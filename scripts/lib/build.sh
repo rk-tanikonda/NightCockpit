@@ -3,7 +3,7 @@
 build_model_tests() {
     require_swift
     xcrun swiftc -swift-version 5 -parse-as-library \
-        "$PROJECT_ROOT/Tools/LockScreenModel.swift" "$PROJECT_ROOT/Tests/LockScreenFixtures.swift" \
+        "$PROJECT_ROOT/Sources/Support/WallpaperIdentity.swift" "$PROJECT_ROOT/Tools/LockScreenModel.swift" "$PROJECT_ROOT/Tools/MovieFormat.swift" "$PROJECT_ROOT/Sources/Support/PlaybackState.swift" "$PROJECT_ROOT/Tests/LockScreenFixtures.swift" \
         -o "$BUILD_DIR/lockscreen-model-tests"
     "$BUILD_DIR/lockscreen-model-tests"
 }
@@ -11,8 +11,9 @@ build_model_tests() {
 build_lock_tool() {
     require_swift
     xcrun swiftc -swift-version 5 -parse-as-library -target "$(uname -m)-apple-macosx13.0" \
-        -framework AppKit -framework AVFoundation \
-        "$PROJECT_ROOT/Tools/LockScreenModel.swift" "$PROJECT_ROOT/Tools/VideoPreparation.swift" \
+        -framework AppKit -framework AVFoundation -framework VideoToolbox \
+        "$PROJECT_ROOT/Sources/Support/WallpaperIdentity.swift" "$PROJECT_ROOT/Tools/LockScreenModel.swift" "$PROJECT_ROOT/Tools/MovieFormat.swift" "$PROJECT_ROOT/Tools/VideoPreparation.swift" \
+        "$PROJECT_ROOT/Sources/Support/DesktopBackdrop.swift" \
         "$PROJECT_ROOT/Tools/LockScreenSetup.swift" -o "$BUILD_DIR/lockscreen-tool"
 }
 
@@ -24,14 +25,10 @@ build_app() {
     xcrun swiftc -swift-version 5 -O -whole-module-optimization \
         -target "$(uname -m)-apple-macosx13.0" \
         -framework AppKit -framework AVFoundation -framework QuartzCore \
-        -framework UniformTypeIdentifiers -framework WebKit \
+        -framework UniformTypeIdentifiers \
         "$PROJECT_ROOT/Sources/main.swift" "$PROJECT_ROOT"/Sources/{App,Playback,UI,Support,LockScreen}/*.swift \
         -o "$APP/Contents/MacOS/$APP_EXECUTABLE"
     cp "$PROJECT_ROOT/Info.plist" "$APP/Contents/Info.plist"
-    cp "$PROJECT_ROOT/Sources/Resources/stream-player.html" "$APP/Contents/Resources/"
-    if [[ -f "$PROJECT_ROOT/wallpaper.local.json" ]]; then
-        cp "$PROJECT_ROOT/wallpaper.local.json" "$APP/Contents/Resources/"
-    fi
     if [[ -s "$PROJECT_ROOT/Videos/wallpaper.mp4" ]]; then
         cp "$PROJECT_ROOT/Videos/wallpaper.mp4" "$APP/Contents/Resources/"
     fi

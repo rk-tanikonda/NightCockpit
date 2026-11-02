@@ -29,7 +29,6 @@ if [[ "$lock_screen" == true ]]; then
 fi
 if [[ -n "$video" || "$lock_screen" == true ]]; then
     defaults write "$BUNDLE_ID" videoPath -string "$VIDEO_PATH"
-    defaults write "$BUNDLE_ID" websiteMode -bool false
 fi
 bash "$PROJECT_ROOT/service.command" start --use-build
 if [[ "$lock_status" -ne 0 ]]; then

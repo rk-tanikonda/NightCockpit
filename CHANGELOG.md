@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Remove streaming, WebKit, browser resources, and private stream configuration.
+- Retain desktop players across lock/wake and display geometry changes.
+- Keep a same-video poster underneath playback and as the system fallback.
+- Use nonactivating desktop-level windows without foreground reordering or input hit testing.
+- Encode video-only native HEVC Main 10 with temporal replay groups for macOS 27.
+- Repair lost native registration asynchronously and gate lock audio on native readiness.
+- Add lifecycle, temporal-format, and noninteractive-window fixtures.
+
 - Replace private-bundle installation with portable setup and user-selected media.
 - Share shell configuration and build operations across command entry points.
 - Use a project-owned app/service identifier and add a first-run video chooser.

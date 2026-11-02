@@ -8,15 +8,15 @@ extension AppDelegate {
         let menu = NSMenu()
         addMenuItem(menu, title: "Settings / status…", action: #selector(showControls))
         addMenuItem(menu, title: "Change video…", action: #selector(chooseVideo), key: "o")
-        if WallpaperSettings.bundledVideoURL == nil {
-            addMenuItem(menu, title: "Use configured stream", action: #selector(useConfiguredStream))
-        }
         addMenuItem(menu, title: "Reload wallpaper", action: #selector(reloadWallpaper))
         pauseItem = addMenuItem(menu, title: "Pause", action: #selector(togglePause), key: "p")
         fitItem = addMenuItem(menu, title: "Fit entire video", action: #selector(toggleFit))
         fitItem.state = settings.fit ? .on : .off
         displayItem = addMenuItem(menu, title: "Main display only", action: #selector(toggleDisplay))
         displayItem.state = settings.mainDisplayOnly ? .on : .off
+        if #available(macOS 26.0, *) {
+            addMenuItem(menu, title: "Apply video to Lock Screen", action: #selector(applyNativeWallpaper))
+        }
         menu.addItem(.separator())
         let sound = addMenuItem(menu, title: "Sound while locked", action: #selector(toggleLockSound(_:)))
         sound.state = lockAudio.enabled ? .on : .off
@@ -39,32 +39,35 @@ extension AppDelegate {
     }
 
     @objc func stopWallpaper() {
-        if let tool = Bundle.main.url(forResource: "lockscreen-tool", withExtension: nil),
-           FileManager.default.fileExists(atPath: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/NightCockpit/LockScreenBackup/Index.plist").path) {
-            let restore = Process()
-            restore.executableURL = tool
-            restore.arguments = ["restore"]
-            do { try restore.run(); restore.waitUntilExit() } catch { setStatus(error.localizedDescription) }
+        // Disable lock repair before restoration and keep the UI responsive.
+        state.stopping = true
+        lockAudio.nativeReady = false
+        updatePlayback()
+        loadTask?.cancel()
+        nativeWallpaper.cancel()
+        nativeWallpaper.run("restore") { [weak self] result in
+            if case .failure(let error) = result { self?.setStatus(error.localizedDescription); return }
+            self?.finishStopping()
         }
-        // Disable auto-start first, so deliberately stopping does not cause a restart.
-        guard let bundleID = Bundle.main.bundleIdentifier else { return }
-        let job = "gui/\(getuid())/\(bundleID).agent"
-        runLaunchctl(["disable", job])
-        runLaunchctl(["bootout", job])
-        NSApp.terminate(nil)
+        if Bundle.main.url(forResource: "lockscreen-tool", withExtension: nil) == nil { finishStopping() }
     }
 
-    private func runLaunchctl(_ arguments: [String]) {
+    private func finishStopping() {
+        do { try DesktopBackdrop.restore() } catch { setStatus(error.localizedDescription); return }
+        guard let bundleID = Bundle.main.bundleIdentifier else { return }
+        runLaunchctl(["disable", "gui/\(getuid())/\(bundleID).agent"]) { [weak self] in
+            self?.runLaunchctl(["bootout", "gui/\(getuid())/\(bundleID).agent"]) {
+                NSApp.terminate(nil)
+            }
+        }
+    }
+
+    private func runLaunchctl(_ arguments: [String], completion: @escaping () -> Void) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/launchctl")
         process.arguments = arguments
-        process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
-            setStatus("Could not update background service: \(error.localizedDescription)")
-        }
+        process.terminationHandler = { _ in DispatchQueue.main.async { completion() } }
+        do { try process.run() } catch { setStatus(error.localizedDescription); completion() }
     }
 }

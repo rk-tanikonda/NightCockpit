@@ -14,6 +14,7 @@ final class LockAudioController {
     private var sleeping = false
     private var sourceURL: URL?
     private var generation = 0
+    var nativeReady = false { didSet { updatePlayback() } }
     var enabled = UserDefaults.standard.bool(forKey: "lockScreenAudio") {
         didSet { UserDefaults.standard.set(enabled, forKey: "lockScreenAudio"); updatePlayback() }
     }
@@ -77,7 +78,7 @@ final class LockAudioController {
     }
 
     private func updatePlayback() {
-        if enabled && locked && !sleeping {
+        if enabled && nativeReady && locked && !sleeping {
             player?.play()
         } else {
             player?.pause()

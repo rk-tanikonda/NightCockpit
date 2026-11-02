@@ -61,7 +61,7 @@ test('video paths resolve from the caller directory and preserve spaces and shel
   const result = f.run(['--video', name]);
   assert.equal(result.status, 0, result.stderr);
   assert.ok(f.log().includes(`<${path.join(f.root, name)}>`));
-  assert.match(f.log(), /websiteMode> <-bool> <false>/);
+  assert.doesNotMatch(f.log(), /websiteMode/);
   assert.equal(fs.existsSync(path.join(f.root, 'unintended')), false);
   assert.doesNotMatch(f.log(), /lock </);
 });

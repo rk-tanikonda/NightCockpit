@@ -66,6 +66,51 @@ struct LockScreenFixtures {
             _ = try LockScreenModel.register(in: [:], video: url, thumbnail: url)
             fatalError("Unsupported manifest should be rejected")
         } catch {}
+        // Global success must not hide a conflicting per-Space desktop override.
+        var perSpace = chosen
+        perSpace["Spaces"] = ["active": ["Default": ["Desktop": oldChoice, "Idle": ourChoice, "Type": "individual"]]]
+        let conflict = LockScreenModel.selection(in: perSpace)
+        precondition(!conflict.wallpaper && conflict.screenSaver)
+        perSpace["AllSpacesAndDisplays"] = ["Idle": oldChoice, "Type": "idle"]
+        precondition(!LockScreenModel.selection(in: perSpace).screenSaver)
+        let fixedSpaces = try LockScreenModel.choose(in: perSpace)
+        let globalIdle = fixedSpaces["AllSpacesAndDisplays"] as! [String: Any]
+        precondition(globalIdle["Type"] as? String == "idle" && globalIdle["Linked"] == nil)
+        precondition(LockScreenModel.selection(in: fixedSpaces).wallpaper)
+        precondition(LockScreenModel.selection(in: fixedSpaces).screenSaver)
+        let restoredNewSpace = LockScreenModel.restore(current: fixedSpaces, original: original)
+        let restoredSpaces = restoredNewSpace["Spaces"] as! [String: Any]
+        let restoredDefault = (restoredSpaces["active"] as! [String: Any])["Default"] as! [String: Any]
+        precondition(!LockScreenModel.isOurChoice(restoredDefault["Linked"]))
+        precondition(NSDictionary(dictionary: restoredDefault["Linked"] as! [String: Any]).isEqual(to: oldChoice))
+        var playback = PlaybackState()
+        precondition(!playback.shouldPause)
+        playback.locked = true; playback.displayAsleep = true
+        playback.systemAsleep = false // waking the CPU cannot resume the locked display
+        precondition(playback.shouldPause)
+        playback.displayAsleep = false
+        precondition(playback.shouldPause)
+        playback.unlock()
+        precondition(!playback.shouldPause)
+        playback.manuallyPaused = true; playback.locked = true; playback.unlock()
+        precondition(playback.shouldPause) // an explicit pause survives unlock
+        playback.stopping = true
+        playback.unlock()
+        precondition(playback.shouldPause && !playback.shouldRepairNative(true))
+        let restarted = PlaybackState()
+        precondition(restarted.shouldRepairNative(true) && !restarted.shouldRepairNative(false))
+        func box(_ type: String, _ payload: Data) -> Data {
+            let size = UInt32(payload.count + 8)
+            var output = withUnsafeBytes(of: size.bigEndian) { Data($0) }
+            output.append(Data(type.utf8)); output.append(payload)
+            return output
+        }
+        let groups = box("sgpd", Data([0, 0, 0, 0]) + Data("tscl".utf8)) + box("sbgp", Data([0, 0, 0, 0]) + Data("tsas".utf8))
+        let movie = box("moov", box("trak", box("mdia", box("minf", box("stbl", groups)))))
+        precondition(MovieFormat.temporalGroups(in: movie) == Set(["tscl", "tsas"]))
+        precondition(MovieFormat.temporalGroups(in: box("mdat", Data("sgpdtscltsas".utf8))).isEmpty)
+        precondition(MovieFormat.temporalGroups(in: Data(movie.prefix(10))).isEmpty)
+        precondition(MovieFormat.temporalGroups(in: Data([255, 255, 255, 255]) + Data("moov".utf8)).isEmpty)
         print("Lock Screen model fixtures passed: linked wallpaper/screen saver, individual restore, selective restore, legacy upgrade, nested displays, idempotent registration, schema rejection.")
     }
 }

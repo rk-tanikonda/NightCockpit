@@ -16,6 +16,7 @@
 /Videos/*
 !/Videos/.gitkeep
 !/Videos/SOURCE.md
+# Legacy private stream configuration (no longer read by the app)
 wallpaper.local.json
 *.mp4
 *.mov

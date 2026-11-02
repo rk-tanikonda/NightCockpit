@@ -1,21 +1,20 @@
 import AppKit
 import AVFoundation
 
-/// Coordinates settings, playback engines and UI. Rendering lives in Playback/.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let settings = WallpaperSettings()
     let lockAudio = LockAudioController()
+    let nativeWallpaper = NativeWallpaperController()
     var statusItem: NSStatusItem!
     var pauseItem: NSMenuItem!
     var fitItem: NSMenuItem!
     var displayItem: NSMenuItem!
     var controlWindow: NSWindow?
     let statusLabel = NSTextField(wrappingLabelWithString: "Starting…")
-    var playbacks: [WallpaperPlayback] = []
+    var playbacks: [LocalVideoPlayback] = []
     var selectedURL: URL?
-    var usingStream = false
-    var manuallyPaused = false
-    var suspended = false
+    var poster: CGImage?
+    var state = PlaybackState()
     var loadTask: Task<Void, Never>?
     var generation = 0
 
@@ -24,133 +23,129 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         buildMenu()
         observeWorkspace()
         if !CommandLine.arguments.contains("--background") { showControls() }
-        if settings.streamMode, settings.streamURL != nil {
-            usingStream = true
-            rebuildPlayback()
-        } else if let path = settings.videoPath,
-           FileManager.default.isReadableFile(atPath: path) {
+        if let path = settings.videoPath, FileManager.default.isReadableFile(atPath: path) {
             loadLocalVideo(URL(fileURLWithPath: path))
-        } else if let bundled = WallpaperSettings.bundledVideoURL {
-            loadLocalVideo(bundled)
-        } else {
-            usingStream = settings.streamURL != nil
-            rebuildPlayback()
-            if !usingStream { showControls() }
-        }
+        } else if let bundled = WallpaperSettings.bundledVideoURL { loadLocalVideo(bundled) }
+        else { setStatus("Choose a local video to start your wallpaper."); showControls() }
     }
 
-    /// Validate a new file before replacing a working wallpaper.
     func loadLocalVideo(_ url: URL) {
         loadTask?.cancel()
         generation += 1
-        let expectedGeneration = generation
-        setStatus("Opening \(url.lastPathComponent)…")
+        let expected = generation
+        setStatus("Preparing \(url.lastPathComponent)…")
         loadTask = Task { @MainActor [weak self] in
-            guard let self = self else { return }
+            guard let self else { return }
             do {
                 let asset = AVURLAsset(url: url)
-                let playable = try await asset.load(.isPlayable)
-                let tracks = try await asset.loadTracks(withMediaType: .video)
                 let duration = try await asset.load(.duration)
-                guard !Task.isCancelled, self.generation == expectedGeneration else { return }
-                guard playable, !tracks.isEmpty, duration.seconds.isFinite, duration.seconds > 0 else {
-                    self.setStatus("Choose a playable MP4 or MOV with a video track.")
-                    return
+                guard try await asset.load(.isPlayable), duration.seconds.isFinite, duration.seconds > 0,
+                      !(try await asset.loadTracks(withMediaType: .video)).isEmpty else {
+                    self.setStatus("Choose a playable MP4 or MOV."); return
                 }
+                let image = try await DesktopBackdrop.image(for: url)
+                guard !Task.isCancelled, self.generation == expected else { return }
+                // Keep old windows until the replacement video and poster are ready.
+                let old = self.playbacks
+                self.playbacks = []
                 self.selectedURL = url
-                self.usingStream = false
-                if url == WallpaperSettings.bundledVideoURL {
-                    self.settings.videoPath = nil
-                } else { self.settings.videoPath = url.path }
-                self.settings.streamMode = false
+                self.poster = image
+                self.settings.videoPath = url.path
+                self.reconcileScreens()
+                old.forEach { $0.close() }
                 self.lockAudio.configure(url)
-                self.rebuildPlayback()
+                // The poster setter must never replace a configured native aerial.
+                // Native repair owns every Space/display in this mode.
+                try await DesktopBackdrop.install(image, updateSystemWallpaper: !self.settings.nativeEnabled)
+                self.repairNativeWallpaper()
+                self.setStatus("Local video loaded. Desktop playback is muted.")
             } catch {
-                guard !Task.isCancelled, self.generation == expectedGeneration else { return }
-                self.setStatus("Could not open video: \(error.localizedDescription)")
+                guard !Task.isCancelled, self.generation == expected else { return }
+                self.setStatus("Could not prepare wallpaper: \(error.localizedDescription)")
+                self.showControls()
             }
         }
     }
 
-    func rebuildPlayback() {
-        playbacks.forEach { $0.close() }
-        playbacks.removeAll()
+    func reconcileScreens() {
+        guard let url = selectedURL, let poster else { return }
         let screens = settings.mainDisplayOnly ? Array(NSScreen.screens.prefix(1)) : NSScreen.screens
+        let wanted = Set(screens.map(DesktopBackdrop.screenID))
+        let removed = playbacks.filter { !wanted.contains($0.screenID) }
+        playbacks.removeAll { !wanted.contains($0.screenID) }
+        removed.forEach { $0.close() }
         for screen in screens {
-            if usingStream, let url = settings.streamURL {
-                playbacks.append(StreamVideoPlayback(screen: screen, url: url, fit: settings.fit) { [weak self] in
-                    self?.setStatus($0)
-                })
-            } else if !usingStream, let url = selectedURL {
-                playbacks.append(LocalVideoPlayback(screen: screen, url: url, fit: settings.fit) { [weak self] in
-                    self?.setStatus($0)
-                })
+            if let current = playbacks.first(where: { $0.screenID == DesktopBackdrop.screenID(screen) }) {
+                current.updateScreen(screen)
+            } else {
+                playbacks.append(LocalVideoPlayback(screen: screen, url: url, poster: poster, fit: settings.fit) { [weak self] in self?.setStatus($0) })
             }
-        }
-        if playbacks.isEmpty {
-            setStatus("Choose a local video to start your wallpaper.")
-        } else if usingStream {
-            setStatus("Loading video stream…")
-        } else {
-            setStatus("Local video loaded. Desktop playback is muted.")
         }
         updatePlayback()
     }
 
-    func updatePlayback() {
-        let paused = manuallyPaused || suspended
-        playbacks.forEach { $0.setPaused(paused) }
-        pauseItem.title = manuallyPaused ? "Resume" : "Pause"
-        statusItem.button?.image = NSImage(
-            systemSymbolName: paused ? "pause.rectangle.fill" : "play.rectangle.fill",
-            accessibilityDescription: "Night Cockpit"
-        )
-    }
-
-    @objc func useConfiguredStream() {
-        guard settings.streamURL != nil else {
-            setStatus("Set an HTTPS streamURL in wallpaper.local.json and rebuild, or choose a local video.")
-            return
+    @objc func applyNativeWallpaper() {
+        guard let url = selectedURL else { return }
+        settings.nativeEnabled = true
+        lockAudio.nativeReady = false
+        setStatus("Preparing the Lock Screen video…")
+        nativeWallpaper.run("install", video: url) { [weak self] result in
+            switch result {
+            case .success:
+                self?.lockAudio.nativeReady = true
+                self?.setStatus("Desktop and native Lock Screen are ready.")
+            case .failure(let error): self?.setStatus(error.localizedDescription)
+            }
         }
-        loadTask?.cancel()
-        generation += 1
-        usingStream = true
-        settings.streamMode = true
-        rebuildPlayback()
     }
 
-    @objc func reloadWallpaper() {
-        loadTask?.cancel()
-        generation += 1
-        rebuildPlayback()
+    func repairNativeWallpaper() {
+        guard state.shouldRepairNative(settings.nativeEnabled) else { return }
+        if let url = selectedURL,
+           let data = try? Data(contentsOf: DesktopBackdrop.directory.appendingPathComponent("NativeMovieSource.plist")),
+           let record = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+           record["path"] as? String != url.path {
+            applyNativeWallpaper(); return
+        }
+        nativeWallpaper.run("repair") { [weak self] result in
+            if case .failure(let error) = result {
+                self?.lockAudio.nativeReady = false
+                self?.setStatus(error.localizedDescription)
+            } else { self?.lockAudio.nativeReady = true }
+        }
     }
-    @objc func togglePause() { manuallyPaused.toggle(); updatePlayback() }
+
+    func updatePlayback() {
+        playbacks.forEach { $0.setPaused(state.shouldPause) }
+        pauseItem.title = state.manuallyPaused ? "Resume" : "Pause"
+        statusItem.button?.image = NSImage(systemSymbolName: state.manuallyPaused ? "pause.rectangle.fill" : "play.rectangle.fill", accessibilityDescription: "Night Cockpit")
+    }
+    @objc func reloadWallpaper() { if let url = selectedURL { loadLocalVideo(url) } }
+    @objc func togglePause() { state.manuallyPaused.toggle(); updatePlayback() }
     @objc func toggleFit() {
-        settings.fit.toggle()
-        fitItem.state = settings.fit ? .on : .off
+        settings.fit.toggle(); fitItem.state = settings.fit ? .on : .off
         playbacks.forEach { $0.setFit(settings.fit) }
     }
     @objc func toggleDisplay() {
-        settings.mainDisplayOnly.toggle()
-        displayItem.state = settings.mainDisplayOnly ? .on : .off
-        rebuildPlayback()
+        settings.mainDisplayOnly.toggle(); displayItem.state = settings.mainDisplayOnly ? .on : .off
+        reconcileScreens()
     }
-    @objc func screensChanged() { rebuildPlayback() }
-    @objc func sleepPlayback() { suspended = true; updatePlayback() }
-    @objc func wakePlayback() { suspended = false; updatePlayback(); refreshWindowOrder() }
+    @objc func screensChanged() { reconcileScreens(); checkNativeSelection() }
+    @objc func checkNativeSelection() {
+        if state.shouldRepairNative(settings.nativeEnabled) && !WallpaperIdentity.nativeDesktopSelected { repairNativeWallpaper() }
+    }
+    @objc func displaySlept() { state.displayAsleep = true; updatePlayback() }
+    @objc func displayWoke() { state.displayAsleep = false; reconcileScreens() }
+    @objc func systemSlept() { state.systemAsleep = true; updatePlayback() }
+    @objc func systemWoke() { state.systemAsleep = false; reconcileScreens() }
+    @objc func sessionResigned() { state.sessionActive = false; updatePlayback() }
+    @objc func sessionActivated() { state.sessionActive = true; updatePlayback() }
+    @objc func screenLocked() { state.locked = true; updatePlayback(); repairNativeWallpaper() }
+    @objc func screenUnlocked() { state.unlock(); updatePlayback() }
 
-    /// Reassert desktop ordering when apps or Spaces change; never raise above apps.
-    @objc func refreshWindowOrder() {
-        playbacks.forEach { $0.window.orderFrontRegardless() }
-    }
-
-    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        showControls()
-        return true
-    }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showControls(); return true }
     func applicationWillTerminate(_ notification: Notification) {
-        loadTask?.cancel()
-        lockAudio.stop()
+        loadTask?.cancel(); nativeWallpaper.cancel(); lockAudio.stop()
         playbacks.forEach { $0.close() }
     }
 }

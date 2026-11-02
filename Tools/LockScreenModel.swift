@@ -6,8 +6,8 @@ import Foundation
 enum LockScreenModel {
     static let categoryID = "8B5C4200-0000-4000-8000-000000000001"
     static let subcategoryID = "8B5C4200-0000-4000-8000-000000000002"
-    static let assetID = "8B5C4200-0000-4000-8000-000000000003"
-    static let provider = "com.apple.wallpaper.choice.aerials"
+    static let assetID = WallpaperIdentity.assetID
+    static let provider = WallpaperIdentity.aerialProvider
 
     static func register(in manifest: [String: Any], video: URL, thumbnail: URL) throws -> [String: Any] {
         guard var assets = manifest["assets"] as? [[String: Any]],
@@ -47,12 +47,15 @@ enum LockScreenModel {
             guard var dictionary = value as? [String: Any] else { return value }
             if dictionary["Desktop"] != nil || dictionary["Idle"] != nil || dictionary["Linked"] != nil {
                 count += 1
-                // A Desktop-only choice gives the lock UI a still wallpaper while
-                // leaving the animated screen saver on its previous/default asset.
-                dictionary.removeValue(forKey: "Desktop")
-                dictionary.removeValue(forKey: "Idle")
-                dictionary["Linked"] = choice
-                dictionary["Type"] = "linked"
+                if dictionary["Type"] as? String == "idle", dictionary["Desktop"] == nil, dictionary["Linked"] == nil {
+                    // macOS retains a global Idle-only node with separate Spaces.
+                    dictionary["Idle"] = choice
+                } else {
+                    dictionary.removeValue(forKey: "Desktop")
+                    dictionary.removeValue(forKey: "Idle")
+                    dictionary["Linked"] = choice
+                    dictionary["Type"] = "linked"
+                }
             } else {
                 for (key, child) in dictionary { dictionary[key] = walk(child) }
             }
@@ -63,37 +66,35 @@ enum LockScreenModel {
         return result
     }
 
-    static func isOurChoice(_ choice: Any?) -> Bool {
-        guard let dictionary = choice as? [String: Any], let content = dictionary["Content"] as? [String: Any],
-              let first = (content["Choices"] as? [[String: Any]])?.first,
-              first["Provider"] as? String == provider, let data = first["Configuration"] as? Data,
-              let config = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else { return false }
-        return config["assetID"] as? String == assetID
-    }
+    static func isOurChoice(_ choice: Any?) -> Bool { WallpaperIdentity.isOurChoice(choice) }
 
     static func selection(in store: [String: Any]) -> (wallpaper: Bool, screenSaver: Bool) {
-        guard let all = store["AllSpacesAndDisplays"] as? [String: Any] else { return (false, false) }
-        return (isOurChoice(all["Desktop"] ?? all["Linked"]), isOurChoice(all["Idle"] ?? all["Linked"]))
+        let current = WallpaperIdentity.coverage(in: store)
+        return (current.wallpaper, current.screenSaver)
     }
 
-    /// Restore slots still owned by us; preserve choices made by the user later.
+    /// New Spaces may appear after installation. Restore our new overrides from
+    /// the original global choice while preserving later, non-app choices.
     static func restore(current: [String: Any], original: [String: Any]) -> [String: Any] {
-        var result = current
-        let ownsLinked = isOurChoice(current["Linked"])
-        let ownsDesktop = isOurChoice(current["Desktop"])
-        let ownsIdle = isOurChoice(current["Idle"])
-        if ownsLinked || (ownsDesktop && ownsIdle && original["Linked"] != nil) {
-            for key in ["Desktop", "Idle", "Linked", "Type"] { result[key] = original[key] }
-        } else {
-            if ownsDesktop { result["Desktop"] = original["Desktop"] ?? original["Linked"] }
-            if ownsIdle { result["Idle"] = original["Idle"] ?? original["Linked"] }
-        }
-        for (key, value) in current where !["Desktop", "Idle", "Linked", "Type"].contains(key) {
-            if let child = value as? [String: Any], let old = original[key] as? [String: Any] {
-                result[key] = restore(current: child, original: old)
+        let fallback = original["SystemDefault"] as? [String: Any] ?? original["AllSpacesAndDisplays"] as? [String: Any] ?? [:]
+        func walk(_ node: [String: Any], old: [String: Any]) -> [String: Any] {
+            var result = node
+            let prior = ["Desktop", "Idle", "Linked"].contains(where: { old[$0] != nil }) ? old : fallback
+            let linked = isOurChoice(node["Linked"])
+            let desktop = isOurChoice(node["Desktop"])
+            let idle = isOurChoice(node["Idle"])
+            if linked || (desktop && idle && prior["Linked"] != nil) {
+                for key in ["Desktop", "Idle", "Linked", "Type"] { result[key] = prior[key] }
+            } else {
+                if desktop { result["Desktop"] = prior["Desktop"] ?? prior["Linked"] }
+                if idle { result["Idle"] = prior["Idle"] ?? prior["Linked"] }
             }
+            for (key, child) in node where !["Desktop", "Idle", "Linked", "Type"].contains(key) {
+                if let dictionary = child as? [String: Any] { result[key] = walk(dictionary, old: old[key] as? [String: Any] ?? [:]) }
+            }
+            return result
         }
-        return result
+        return walk(current, old: original)
     }
 
     static func removeOurAsset(from manifest: [String: Any]) -> [String: Any] {
