@@ -17,7 +17,7 @@ xcrun swiftc -swift-version 5 -O -whole-module-optimization \
   -target "$(uname -m)-apple-macosx13.0" \
   -framework AppKit -framework AVFoundation -framework QuartzCore \
   -framework UniformTypeIdentifiers -framework WebKit \
-  Sources/main.swift Sources/App/*.swift Sources/Playback/*.swift Sources/UI/*.swift Sources/Support/*.swift -o "$APP/Contents/MacOS/NightCockpit"
+  Sources/main.swift Sources/App/*.swift Sources/Playback/*.swift Sources/UI/*.swift Sources/Support/*.swift Sources/LockScreen/*.swift -o "$APP/Contents/MacOS/NightCockpit"
 cp Info.plist "$APP/Contents/Info.plist"
 cp Sources/Resources/stream-player.html "$APP/Contents/Resources/stream-player.html"
 if [[ -f wallpaper.local.json ]]; then
@@ -27,6 +27,12 @@ else
 fi
 if [[ -s Videos/night-cockpit.mp4 ]]; then
   cp Videos/night-cockpit.mp4 "$APP/Contents/Resources/night-cockpit.mp4"
+fi
+if [[ -x .build/lockscreen-tool ]]; then
+  cp .build/lockscreen-tool "$APP/Contents/Resources/lockscreen-tool"
+fi
+if [[ -d LICENSES ]]; then
+  /usr/bin/ditto LICENSES "$APP/Contents/Resources/LICENSES"
 fi
 /usr/bin/codesign --force --deep --sign - "$APP"
 echo "Built: $APP"

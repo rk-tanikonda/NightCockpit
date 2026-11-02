@@ -4,6 +4,7 @@ import AVFoundation
 /// Coordinates settings, playback engines and UI. Rendering lives in Playback/.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let settings = WallpaperSettings()
+    let lockAudio = LockAudioController()
     var statusItem: NSStatusItem!
     var pauseItem: NSMenuItem!
     var fitItem: NSMenuItem!
@@ -26,6 +27,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !settings.streamMode, let path = settings.videoPath,
            FileManager.default.isReadableFile(atPath: path) {
             loadLocalVideo(URL(fileURLWithPath: path))
+        } else if let bundled = Bundle.main.url(forResource: "night-cockpit", withExtension: "mp4") {
+            loadLocalVideo(bundled)
         } else {
             usingStream = true
             rebuildPlayback()
@@ -52,8 +55,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 self.selectedURL = url
                 self.usingStream = false
-                self.settings.videoPath = url.path
+                if url == Bundle.main.url(forResource: "night-cockpit", withExtension: "mp4") {
+                    self.settings.videoPath = nil
+                } else { self.settings.videoPath = url.path }
                 self.settings.streamMode = false
+                self.lockAudio.configure(url)
                 self.rebuildPlayback()
             } catch {
                 guard !Task.isCancelled, self.generation == expectedGeneration else { return }
@@ -140,6 +146,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     func applicationWillTerminate(_ notification: Notification) {
         loadTask?.cancel()
+        lockAudio.stop()
         playbacks.forEach { $0.close() }
     }
 }

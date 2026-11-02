@@ -24,4 +24,4 @@ The GitHub Actions workflow runs these on a macOS runner when the source is push
 - Sleep/wake the Mac. Verify playback resumes without audio.
 - Confirm the source URL host is allowed to serve the configured media. A successful regular-browser preview does not guarantee a standalone video stream will be accepted.
 
-Do not describe Lock Screen playback/audio as passed: this project does not implement them.
+Lock Screen support is experimental and must not be described as verified until it passes a real macOS 26 check. Run setup, lock using Control-Command-Q, confirm the local video and lock-only audio, unlock and confirm silence, then test display sleep/wake. Stop/restore must restore the prior wallpaper. The helper runs pure configuration fixtures before installation; those tests do not prove system rendering or lock-event delivery.

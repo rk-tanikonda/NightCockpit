@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.5.0
+
+- Default to the verified local 4K H.264/AAC file; no website/network requests for local playback.
+- Initialize the native video layer frame immediately.
+- Add experimental macOS 26 native aerial registration, HEVC conversion, one-time settings backups and selective restore.
+- Add separate lock-only audio playback, muted desktop playback, and restore on stop.
+- Add pure Lock Screen configuration fixtures and third-party license attribution.
+- Real macOS Lock Screen/video/audio behavior remains unverified.
+
+
 ## 1.4.0
 
 - Split startup, app coordination, workspace events, menu, settings, native playback and stream playback into focused files.

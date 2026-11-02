@@ -14,6 +14,6 @@ Use four spaces in Swift and shell files, two in HTML/JavaScript/JSON/YAML. Keep
 
 Use a local video you own for development. Personal source URLs belong in `wallpaper.local.json`, which Git ignores. Do not commit media, credentials, application bundles or another project's code without the appropriate rights and attribution.
 
-Desktop playback must remain muted. Do not disable system sleep, change security settings, cover authentication UI, or claim Lock Screen integration without a separate implementation and actual device verification.
+Desktop playback must remain muted. Do not disable system sleep, change security settings or cover authentication UI. The experimental native Lock Screen path uses backed-up user wallpaper settings; changes require pure fixture checks and actual macOS 26 rendering/audio/restore verification before claiming device support.
 
 Before committing, inspect `git diff --cached` and `git status --short`. Open a pull request with the trigger, resulting behavior and checks performed, and distinguish automated tests from manual Mac testing.

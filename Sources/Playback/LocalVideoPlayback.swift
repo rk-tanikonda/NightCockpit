@@ -9,6 +9,7 @@ final class VideoView: NSView {
         wantsLayer = true
         layer?.backgroundColor = NSColor.black.cgColor
         layer?.addSublayer(videoLayer)
+        videoLayer.frame = bounds
     }
     required init?(coder: NSCoder) { fatalError("Not used") }
     override func layout() {

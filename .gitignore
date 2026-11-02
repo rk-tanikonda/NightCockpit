@@ -15,6 +15,7 @@
 # Personal media and configuration: not licensed with this source
 /Videos/*
 !/Videos/.gitkeep
+!/Videos/SOURCE.md
 wallpaper.local.json
 *.mp4
 *.mov

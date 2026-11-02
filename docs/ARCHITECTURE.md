@@ -24,4 +24,6 @@ Local playback is the most predictable mode. Stream playback has our own HTML do
 
 `wallpaper.local.json` configures a personal stream URL and is copied into the built app. Git ignores it. The public example starts empty. The selected local file path stays in UserDefaults and the file itself stays where the user put it.
 
-Window ordering, WebKit media behavior and launchd must be checked on macOS. The Lock Screen is a different rendering path; desktop windows are not a Lock Screen implementation. A silent video does not acquire audio by unmuting it.
+Window ordering, WebKit media behavior and launchd must be checked on macOS. The Lock Screen uses a separate experimental macOS 26 path: Tools/LockScreenModel.swift edits only our native aerial entry/selection after schema checks; Tools/LockScreenSetup.swift converts the local file and backs up/writes settings. Sources/LockScreen/LockAudioController.swift plays an audio-only composition only after lock events, stopping on unlock/sleep. The original local 4K file has AAC audio; the web preview was silent. Native video and audio have separate clocks.
+
+The personal offline package defaults to the bundled local video. Streaming remains optional and is not used for its default playback. Native AVPlayerLayer dimensions are initialized before the first layout pass.

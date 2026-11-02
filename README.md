@@ -1,69 +1,67 @@
 # Night Cockpit
 
-A small, readable macOS video wallpaper player written in Swift. MIT-licensed source with no third-party runtime dependencies.
+A readable Swift macOS video wallpaper player. The personal offline package now contains the **actual downloaded 3840×2160 video with AAC audio**, rather than depending on its silent web preview.
 
-**Version 1.4.0:** the code is split into focused files, the menu has ordinary wallpaper controls, and streaming uses our own video-only document. The app no longer loads a wallpaper website or modifies its page.
+## Install this personal offline package
 
-## Build and run
-
-Requires macOS 13+ and Apple's Command Line Tools. Install them with `xcode-select --install` if needed, then:
+Download `NightCockpit-offline.zip` into Downloads and run:
 
 ```bash
-bash build.command
-```
-
-Choose **Change video…** from the menu-bar icon to select an MP4 or MOV that you own. Keep the file at its selected location. Local playback loops offline and remains muted. The wallpaper is drawn below Finder's desktop icons and normal application windows.
-
-For an HTTPS stream, copy `wallpaper.example.json` to `wallpaper.local.json`, set `streamURL` to a direct video URL you are allowed to use, and rebuild. A website page URL is not a video URL. The local configuration is ignored by Git; the public example is empty. This conversation's personal download includes a local configuration for the requested preview, but no video file or rights to third-party footage.
-
-A media server may reject standalone streaming even when its surrounding web page works. This build does not show that website as a fallback. If the stream fails, use a local video; it does not claim to remove an upstream HTTP 429. A black cover can appear while an online video first buffers, but website navigation, banners and buttons cannot appear because that page is never loaded.
-
-## Update the existing personal project
-
-Download `NightCockpit-source.zip` into Downloads:
-
-```bash
-unzip -o ~/Downloads/NightCockpit-source.zip -d ~/Dev/rk
+unzip -o ~/Downloads/NightCockpit-offline.zip -d ~/Dev/rk
 cd ~/Dev/rk/NightCockpit
-bash service.command start
+bash setup.command
 ```
 
-This rebuilds and installs the app, and restarts its background service. Existing local media and preferences are preserved. No root access is needed.
+Setup uses `Videos/night-cockpit.mp4` locally, prepares a native Lock Screen movie, backs up your wallpaper settings, selects that movie on macOS 26+, enables lock-only audio, then installs the login service. HEVC conversion can take a few minutes. It requires Apple's Command Line Tools (`xcode-select --install` if absent), no Homebrew, Python or administrator access.
 
-## Continuous startup and stopping
+If setup says the aerial manifest is missing, open System Settings → Wallpaper and choose/download an Apple aerial once, then run setup again. If native Lock Screen setup fails, setup still starts the desktop and explicitly returns an error for the incomplete Lock Screen part.
+
+**macOS 13–25:** desktop playback works, but this native Lock Screen registration requires macOS 26+. Run `bash service.command start` for desktop only. It will use the bundled video.
+
+## What should happen
+
+- **Desktop:** the local video loops silently below Finder icons. No website, download, browser session or internet connection is used for the default local file.
+- **Lock Screen on macOS 26+:** macOS's own aerial renderer displays the converted local movie. It is selected through the user's wallpaper manifest/store, not a fake lock-screen overlay.
+- **Sound while locked:** a separate audio-only player loops this same file's audio after the system's lock notification. It stops on unlock or display/system sleep. Audio starts at 50% player volume; it does not alter system volume. Toggle it from **Sound while locked** in the menu.
+- **After login:** the per-user launch agent starts the app silently and restarts it after exit/crash. It resumes after sleep without keeping the Mac awake.
+
+Press Control-Command-Q to check the real Lock Screen. This integration is **experimental and unverified on your Mac**. It uses undocumented macOS 26 wallpaper files, which Apple may change. The system video renderer and the audio helper have separate clocks, so exact video/audio synchronization is not guaranteed. The app does not play audio before login or after logout, and cannot animate a sleeping or powered-off display.
+
+## Stop, restore and inspect
 
 ```bash
-bash service.command start       # build, install, start now and after future logins
-bash service.command status      # inspect the launch agent
-bash service.command restart     # restart installed app, without rebuilding
-bash service.command stop        # stop now and disable future auto-start
-bash service.command uninstall   # remove service; preserve app/source/media
+bash service.command status
+bash service.command stop
+bash lockscreen.command status
+bash lockscreen.command restore
 ```
 
-The service runs in your logged-in GUI session, starts without a settings window, and restarts an exited process. Video playback pauses for sleep or an inactive login session, then resumes. It does not prevent sleep, work while powered off, or change battery settings. Website availability and internet access still affect stream mode. Retries use increasing delays up to five minutes.
+`stop` disables/unloads the launch agent, closes the app/audio, and tries to restore this app's native wallpaper choices. It stays stopped after reboot. `restore` selectively restores our Desktop choices and removes our asset/category while preserving other current wallpaper assets and screen-saver choices. Original files are backed up at `~/Library/Application Support/NightCockpit/LockScreenBackup/`.
 
-**Stop wallpaper** in the menu also disables and unloads the service, so it does not immediately restart. **Reload wallpaper** reloads the selected source without opening any website. Other controls: Pause/Resume, Fit entire video, Main display only, Settings/status, and Change video.
+Run `bash setup.command` to enable the full setup again. Use `bash service.command start` for desktop startup without reinstalling Lock Screen settings. The menu's **Stop wallpaper** also attempts restore before stopping. Closing Terminal does not stop playback.
 
-## Current limitations
+## Source and development
 
-- **Lock Screen video and sound are not implemented.** Desktop windows do not constitute Lock Screen integration. That needs a separate OS-specific implementation and a suitable local video with an audio track. The originally requested public preview is documented as silent.
-- The revised desktop window level and stream renderer need manual macOS verification. They are intended to address visibility behind partially covering apps and page flashes, but passing JavaScript tests does not establish those Mac behaviors.
-- The project was edited in Linux. This version has not been compiled or run on macOS here. The bundled GitHub Actions workflow compiles it on a macOS runner after you push.
-- Third-party media and trademarks are not included in the MIT source-code license. Use media you own or have permission to use. Do not commit personal media, source URLs or credentials.
-
-## Understand and contribute
-
-Start with [the architecture guide](docs/ARCHITECTURE.md), then [CONTRIBUTING.md](CONTRIBUTING.md). Each file has one clear responsibility. Tests and manual acceptance checks are in [docs/TESTING.md](docs/TESTING.md).
+Entry point: `Sources/main.swift`. App coordination, workspace events, UI, settings, native/stream playback and lock audio are separate files. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [CONTRIBUTING.md](CONTRIBUTING.md), and [docs/TESTING.md](docs/TESTING.md).
 
 ```bash
-node --test Tests/*.test.cjs
+bash build.command                     # desktop build / launch
+node --test Tests/*.test.cjs            # optional stream-player tests
 bash -n build.command
 bash -n service.command
+bash -n setup.command
+bash -n lockscreen.command
 ```
 
-Node is needed only for development tests. Building/running the application does not need Node, Homebrew, npm packages or full Xcode.
+The Lock Screen command compiles and runs pure configuration fixtures before it can edit real settings. The bundled macOS CI workflow also compiles the app/helper and runs those fixtures; it does not change the runner's wallpaper. This update was authored in Linux: actual macOS compilation, lock events, native aerial rendering and lock-only audio have not been verified here.
 
-## Publish your source
+The original video was downloaded and independently checked with ffprobe: H.264, 3840×2160, 30.8 seconds, AAC audio, 149,479,463 bytes. Audio signal detection confirmed it is not silent. `Videos/SOURCE.md` records the checksum and origin.
+
+## Open source and Git
+
+The app's original source is MIT-licensed. `Tools/LockScreenModel.swift` includes Apache-2.0 adaptations from W-Player; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and `LICENSES/Apache-2.0.txt`. No Sparkle/updater framework is included.
+
+**The personal offline ZIP includes third-party footage; the public Git repository must not include it.** The video is excluded by `.gitignore` and is not covered by the source-code licenses. Use media you own or have permission to use. MacWall's published terms restrict its catalog media to use in its app; this code grants no rights in that footage.
 
 ```bash
 git init
@@ -72,11 +70,8 @@ git add .
 git status --short
 git diff --cached --stat
 git commit -m "Initial open-source release"
-# Create an empty public repository, then use its real URL:
 git remote add origin https://github.com/YOUR_USERNAME/NightCockpit.git
 git push -u origin main
 ```
 
-Configure your own Git author name/email if Git requests them. Review staged files before committing. `.gitignore` excludes local configuration, videos/audio, builds, app bundles, archives, logs, credentials and editor state. Only the source, tests, empty example configuration and project documentation should be published. Repository creation and pushing are not performed by the build or service scripts.
-
-The MIT [LICENSE](LICENSE) covers original project source only. See [SECURITY.md](SECURITY.md) for security reporting guidance.
+Review the staged files. Video/audio files, local source URLs, builds, app bundles, archives, logs, secrets and editor state are ignored. Git author details and repository destination must be yours. A public clone without personal footage can use **Change video…** for any local MP4/MOV; online stream mode remains optional and is not used by the offline default.

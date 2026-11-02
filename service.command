@@ -18,6 +18,15 @@ stop_job() {
   fi
 }
 
+restore_lock_screen() {
+  local backup_file="$HOME/Library/Application Support/NightCockpit/LockScreenBackup/Index.plist"
+  local restore_tool="$SERVICE_APP/Contents/Resources/lockscreen-tool"
+  if [[ -f "$backup_file" && -x "$restore_tool" ]]; then
+    "$restore_tool" restore || echo 'Automatic wallpaper restore failed. Run bash lockscreen.command restore for details.' >&2
+    defaults write local.ramakrishna.nightcockpit lockScreenAudio -bool false
+  fi
+}
+
 case "${1:-status}" in
   start)
     bash build.command --build-only
@@ -49,6 +58,7 @@ case "${1:-status}" in
     ;;
   stop)
     stop_job
+    restore_lock_screen
     /bin/launchctl disable "$SERVICE_DOMAIN/$SERVICE_LABEL"
     /usr/bin/killall -TERM NightCockpit 2>/dev/null || true
     echo 'Stopped. Will stay stopped after login/reboot until you run start again.'
@@ -65,6 +75,7 @@ case "${1:-status}" in
     ;;
   uninstall)
     stop_job
+    restore_lock_screen
     /bin/launchctl disable "$SERVICE_DOMAIN/$SERVICE_LABEL"
     /usr/bin/killall -TERM NightCockpit 2>/dev/null || true
     # Remove only this service definition; preserve the app, source and media.
